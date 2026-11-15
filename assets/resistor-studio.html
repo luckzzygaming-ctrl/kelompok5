@@ -1,0 +1,2887 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Resistor 3D Studio — Anatomi & Simulasi Interaktif</title>
+
+  <!-- Tailwind CSS untuk tata letak responsif dan UI glassmorphism -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Font: Inter & JetBrains Mono untuk nilai teknis -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Import Map untuk Three.js ES Modules via jsDelivr CDN -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --panel-bg: rgba(13, 17, 26, 0.78);
+      --panel-border: rgba(255, 255, 255, 0.11);
+      --accent-amber: #f59e0b;
+      --accent-cyan: #38bdf8;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #0b0e14;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #f1f5f9;
+      user-select: none;
+    }
+
+    .font-mono-tech {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Kanvas 3D Fullscreen */
+    #canvas-container {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      touch-action: none;
+    }
+
+    #canvas-container canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      outline: none;
+    }
+
+    /* Glassmorphism Panels */
+    .glass-panel {
+      background: var(--panel-bg);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--panel-border);
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .glass-pill {
+      background: rgba(15, 20, 30, 0.82);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Custom Scrollbar untuk Panel Kontrol */
+    .custom-scroll::-webkit-scrollbar {
+      width: 5px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.16);
+      border-radius: 999px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.28);
+    }
+
+    /* Range Slider Modern */
+    input[type="range"].studio-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.14);
+      outline: none;
+      cursor: pointer;
+    }
+    input[type="range"].studio-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b);
+      border: 2px solid #0f172a;
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.55);
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+    input[type="range"].studio-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.14);
+    }
+    input[type="range"].studio-slider::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b);
+      border: 2px solid #0f172a;
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.55);
+      cursor: pointer;
+    }
+
+    /* Custom Select Dark */
+    select.studio-select {
+      background-color: rgba(24, 31, 46, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: #f8fafc;
+      border-radius: 0.65rem;
+      padding: 0.45rem 0.65rem;
+      font-size: 0.8125rem;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+    select.studio-select:focus {
+      border-color: #f59e0b;
+    }
+
+    /* Overlay Anotasi 3D */
+    #annotations-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+      overflow: hidden;
+    }
+
+    .annotation-pin {
+      position: absolute;
+      transform: translate(-50%, -100%);
+      pointer-events: auto;
+      cursor: pointer;
+      transition: opacity 0.25s ease, transform 0.15s ease;
+    }
+
+    .annotation-pin:hover .annotation-badge {
+      border-color: #fbbf24;
+      background: rgba(24, 31, 48, 0.95);
+      transform: translateY(-2px);
+    }
+
+    .annotation-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 11px;
+      border-radius: 999px;
+      background: rgba(13, 18, 28, 0.86);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: #f8fafc;
+      font-size: 11.5px;
+      font-weight: 600;
+      white-space: nowrap;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+      transition: all 0.2s ease;
+    }
+
+    .annotation-badge.active {
+      border-color: #f59e0b;
+      box-shadow: 0 0 18px rgba(245, 158, 11, 0.4);
+    }
+
+    .annotation-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* Efek Kilat Screenshot PNG */
+    #camera-flash {
+      position: fixed;
+      inset: 0;
+      background: #ffffff;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 60;
+      transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Tombol Interaktif */
+    .btn-studio {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      border-radius: 0.7rem;
+      font-weight: 600;
+      transition: all 0.18s ease;
+      cursor: pointer;
+    }
+    .btn-studio:active {
+      transform: scale(0.97);
+    }
+
+    /* Transisi Panel Kontrol Lipat */
+    #control-drawer {
+      transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease;
+    }
+    #control-drawer.collapsed {
+      transform: translateX(calc(100% + 24px));
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    @media (max-width: 767px) {
+      #control-drawer.collapsed {
+        transform: translateY(calc(100% + 24px));
+      }
+      .annotation-badge {
+        font-size: 10.5px;
+        padding: 4px 9px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Kanvas Utama Three.js -->
+  <div id="canvas-container"></div>
+
+  <!-- Layer Garis Leader & Pin Anotasi 3D -->
+  <div id="annotations-layer">
+    <svg id="annotation-lines" class="w-full h-full">
+      <!-- Garis penghubung dinamis dirender via JS -->
+    </svg>
+    <div id="annotation-pins-container"></div>
+  </div>
+
+  <!-- Efek Kilat Kamera untuk Screenshot -->
+  <div id="camera-flash"></div>
+
+  <!-- Toast Notifikasi -->
+  <div id="toast-container" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 pointer-events-none flex flex-col items-center gap-2"></div>
+
+  <!-- HEADER BAR ATAS (Responsif) -->
+  <header class="fixed top-3 left-3 right-3 z-30 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+    <!-- Identitas Aplikasi & Nilai Ohm Live -->
+    <div class="glass-pill rounded-2xl px-3.5 py-2 flex items-center gap-3 pointer-events-auto">
+      <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/20 shrink-0">
+        <!-- Ikon Resistor SVG -->
+        <svg class="w-5 h-5 text-slate-950" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 12h4l2-5 3 10 3-10 3 10 2-5h3" />
+        </svg>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-xs sm:text-sm font-bold tracking-tight text-white">Resistor 3D Studio</h1>
+          <span id="header-ohm-badge" class="font-mono-tech text-[11px] font-bold px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-400/30">
+            22 Ω ±5%
+          </span>
+        </div>
+        <p class="text-[10px] sm:text-[11px] text-slate-400 hidden sm:block">Visualisasi Anatomi Fisik & Struktur Dalam Aksial</p>
+      </div>
+    </div>
+
+    <!-- Bar Aksi Cepat Kanan Atas -->
+    <div class="flex items-center gap-1.5 sm:gap-2 pointer-events-auto">
+      <!-- Tombol Cepat Pecahkan / Satukan -->
+      <button id="btn-quick-explode" class="btn-studio glass-pill px-3 py-2 text-xs text-amber-300 hover:bg-amber-500/20 border-amber-400/30" title="Pecahkan atau satukan struktur resistor">
+        <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+        </svg>
+        <span id="btn-quick-explode-label">Pecahkan Resistor</span>
+      </button>
+
+      <!-- Toggle Label Anotasi -->
+      <button id="btn-toggle-labels" class="btn-studio glass-pill px-3 py-2 text-xs text-sky-300 hover:bg-sky-500/20 border-sky-400/30" title="Tampilkan atau sembunyikan label anatomi 3D">
+        <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+          <line x1="7" y1="7" x2="7.01" y2="7" />
+        </svg>
+        <span class="hidden sm:inline" id="btn-labels-text">Label: ON</span>
+      </button>
+
+      <!-- Tombol Screenshot PNG -->
+      <button id="btn-screenshot" class="btn-studio glass-pill px-3 py-2 text-xs text-emerald-300 hover:bg-emerald-500/20 border-emerald-400/30" title="Ambil Screenshot PNG Resolusi Tinggi">
+        <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+          <circle cx="12" cy="13" r="4" />
+        </svg>
+        <span class="hidden md:inline">Screenshot PNG</span>
+      </button>
+
+      <!-- Tombol Reset -->
+      <button id="btn-reset" class="btn-studio glass-pill px-3 py-2 text-xs text-rose-300 hover:bg-rose-500/20 border-rose-400/30" title="Reset kamera, struktur, gelang warna, dan objek tambahan">
+        <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+          <path d="M3 3v5h5" />
+        </svg>
+        <span class="hidden md:inline">Reset</span>
+      </button>
+
+      <!-- Tombol Lipat / Buka Panel Kontrol -->
+      <button id="btn-toggle-drawer" class="btn-studio glass-pill px-3 py-2 text-xs text-slate-200 hover:bg-white/10" title="Buka/Tutup Panel Kontrol">
+        <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="4" y1="6" x2="20" y2="6" />
+          <line x1="4" y1="12" x2="20" y2="12" />
+          <line x1="4" y1="18" x2="20" y2="18" />
+        </svg>
+        <span id="btn-drawer-text">Kontrol</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- PANEL KONTROL UTAMA (Collapsible Glassmorphism Drawer) -->
+  <aside id="control-drawer" class="fixed right-3 bottom-3 md:bottom-auto md:top-16 w-[calc(100vw-24px)] md:w-[340px] max-h-[56vh] md:max-h-[calc(100vh-84px)] glass-panel rounded-2xl z-30 flex flex-col overflow-hidden">
+    <!-- Navigasi Tab Panel -->
+    <div class="grid grid-cols-4 border-b border-white/10 bg-slate-950/50 p-1 gap-1 shrink-0">
+      <button data-tab="tab-struktur" class="tab-btn active py-2 px-1.5 rounded-xl text-[11px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-400/30 transition">
+        Struktur
+      </button>
+      <button data-tab="tab-warna" class="tab-btn py-2 px-1.5 rounded-xl text-[11px] font-semibold text-slate-400 hover:text-white transition">
+        Gelang Ω
+      </button>
+      <button data-tab="tab-kamera" class="tab-btn py-2 px-1.5 rounded-xl text-[11px] font-semibold text-slate-400 hover:text-white transition">
+        Kamera
+      </button>
+      <button data-tab="tab-objek" class="tab-btn py-2 px-1.5 rounded-xl text-[11px] font-semibold text-slate-400 hover:text-white transition">
+        + Objek
+      </button>
+    </div>
+
+    <!-- Konten Panel Scrollable -->
+    <div class="p-3.5 overflow-y-auto custom-scroll space-y-4 text-xs">
+
+      <!-- TAB 1: STRUKTUR & CINEMATIC TOUR -->
+      <div id="tab-struktur" class="tab-content space-y-4">
+        <!-- Kontrol Pemecahan Resistor -->
+        <div class="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="font-semibold text-slate-200 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+              Pecahkan Struktur Dalam
+            </span>
+            <span id="explode-percent-label" class="font-mono-tech text-xs font-bold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-md">0%</span>
+          </div>
+
+          <input id="slider-explode" type="range" min="0" max="100" value="0" step="1" class="studio-slider" />
+
+          <div class="grid grid-cols-2 gap-2">
+            <button id="btn-explode-open" class="btn-studio py-2.5 px-3 bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-bold text-xs shadow-lg shadow-amber-500/20 hover:brightness-110">
+              Pecahkan (100%)
+            </button>
+            <button id="btn-explode-close" class="btn-studio py-2.5 px-3 bg-white/10 hover:bg-white/15 text-slate-200 text-xs border border-white/10">
+              Satukan (0%)
+            </button>
+          </div>
+        </div>
+
+        <!-- Cinematic Tour -->
+        <div class="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="font-semibold text-slate-200 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+              Cinematic Tour
+            </span>
+            <span id="tour-status-badge" class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-white/10">Siap</span>
+          </div>
+
+          <p class="text-[11px] text-slate-400 leading-relaxed">
+            Tur kamera otomatis 4 tahap yang membedah lapisan luar resistor, memperbesar spiral film logam, dan memeriksa terminal.
+          </p>
+
+          <!-- Progress Bar Tur -->
+          <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+            <div id="tour-progress-bar" class="h-full w-0 bg-gradient-to-r from-sky-400 to-amber-400 transition-all duration-150"></div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <button id="btn-tour-play" class="btn-studio py-2.5 px-3 bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-400/35 text-xs">
+              <svg id="tour-play-icon" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="5 3 19 12 5 21 5 3" />
+              </svg>
+              <span id="tour-play-text">Mulai Tur</span>
+            </button>
+            <button id="btn-tour-stop" class="btn-studio py-2.5 px-3 bg-white/10 hover:bg-white/15 text-slate-300 border border-white/10 text-xs">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="6" width="12" height="12" rx="2" />
+              </svg>
+              <span>Stop</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Daftar Pintasan Anatomi -->
+        <div class="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-2">
+          <div class="text-[11px] font-semibold text-slate-300">Inspeksi Bagian Resistor:</div>
+          <div class="grid grid-cols-2 gap-1.5">
+            <button data-part="coating" class="inspect-part-btn btn-studio py-2 px-2.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-200 border border-amber-400/20 text-[11px] justify-start">
+              <span class="w-2 h-2 rounded-full bg-[#d8b074] shrink-0"></span>
+              Lapisan Luar
+            </button>
+            <button data-part="bands" class="inspect-part-btn btn-studio py-2 px-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-200 border border-red-400/20 text-[11px] justify-start">
+              <span class="w-2 h-2 rounded-full bg-red-500 shrink-0"></span>
+              Gelang Warna
+            </button>
+            <button data-part="core" class="inspect-part-btn btn-studio py-2 px-2.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-200 border border-purple-400/20 text-[11px] justify-start">
+              <span class="w-2 h-2 rounded-full bg-purple-400 shrink-0"></span>
+              Bahan Resistif
+            </button>
+            <button data-part="endcap" class="inspect-part-btn btn-studio py-2 px-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-200 border border-emerald-400/20 text-[11px] justify-start">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
+              Penutup Ujung
+            </button>
+            <button data-part="terminal" class="inspect-part-btn col-span-2 btn-studio py-2 px-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-200 border border-rose-400/20 text-[11px] justify-start">
+              <span class="w-2 h-2 rounded-full bg-rose-400 shrink-0"></span>
+              Kaki Terminal (Kawat Konduktor)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: KALKULATOR & KUSTOMISASI GELANG WARNA -->
+      <div id="tab-warna" class="tab-content hidden space-y-3.5">
+        <!-- Kartu Hasil Resistansi -->
+        <div class="p-3.5 rounded-xl bg-gradient-to-br from-amber-500/15 via-slate-900/80 to-slate-900 border border-amber-400/30 space-y-1.5">
+          <div class="flex items-center justify-between text-[11px] text-slate-400">
+            <span>Nilai Resistansi Terhitung</span>
+            <span class="text-amber-300 font-medium">4-Gelang Standar</span>
+          </div>
+          <div id="calc-ohm-value" class="font-mono-tech text-xl font-bold text-white tracking-tight">
+            22 Ω ±5%
+          </div>
+          <div id="calc-ohm-range" class="font-mono-tech text-[11px] text-slate-300">
+            Rentang Toleransi: 20.90 Ω – 23.10 Ω
+          </div>
+          <!-- Visualisasi Strip Mini Gelang -->
+          <div class="pt-1.5 flex items-center gap-1.5">
+            <div class="h-4 flex-1 rounded-md bg-[#d8b074] flex items-center justify-around px-3 border border-black/30 shadow-inner">
+              <span id="preview-b1" class="w-2.5 h-full bg-[#dc2626]"></span>
+              <span id="preview-b2" class="w-2.5 h-full bg-[#dc2626]"></span>
+              <span id="preview-b3" class="w-2.5 h-full bg-[#111827]"></span>
+              <span id="preview-b4" class="w-2.5 h-full bg-[#eab308] ml-2"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4 Dropdown Pemilih Gelang Warna -->
+        <div class="space-y-2.5">
+          <div class="space-y-1">
+            <label for="select-band1" class="text-[11px] font-medium text-slate-300 flex justify-between">
+              <span>Gelang 1 (Digit Pertama)</span>
+              <span id="b1-val-hint" class="font-mono-tech text-amber-300">2</span>
+            </label>
+            <select id="select-band1" class="studio-select w-full"></select>
+          </div>
+
+          <div class="space-y-1">
+            <label for="select-band2" class="text-[11px] font-medium text-slate-300 flex justify-between">
+              <span>Gelang 2 (Digit Kedua)</span>
+              <span id="b2-val-hint" class="font-mono-tech text-amber-300">2</span>
+            </label>
+            <select id="select-band2" class="studio-select w-full"></select>
+          </div>
+
+          <div class="space-y-1">
+            <label for="select-band3" class="text-[11px] font-medium text-slate-300 flex justify-between">
+              <span>Gelang 3 (Pengali / Multiplier)</span>
+              <span id="b3-val-hint" class="font-mono-tech text-amber-300">×1 Ω</span>
+            </label>
+            <select id="select-band3" class="studio-select w-full"></select>
+          </div>
+
+          <div class="space-y-1">
+            <label for="select-band4" class="text-[11px] font-medium text-slate-300 flex justify-between">
+              <span>Gelang 4 (Toleransi)</span>
+              <span id="b4-val-hint" class="font-mono-tech text-amber-300">±5%</span>
+            </label>
+            <select id="select-band4" class="studio-select w-full"></select>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: ROTASI & KONTROL KAMERA -->
+      <div id="tab-kamera" class="tab-content hidden space-y-3.5">
+        <!-- Preset Sudut Pandang -->
+        <div class="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-2.5">
+          <div class="font-semibold text-slate-200 text-xs">Preset Sudut Pandang</div>
+          <div class="grid grid-cols-1 gap-2">
+            <button id="preset-iso" class="btn-studio py-2 px-3 bg-white/10 hover:bg-amber-500/20 hover:border-amber-400/40 text-slate-100 border border-white/10 text-xs justify-between">
+              <span>Sudut Isometrik Studio</span>
+              <span class="text-[10px] text-slate-400 font-mono-tech">ISO 3D</span>
+            </button>
+            <button id="preset-front" class="btn-studio py-2 px-3 bg-white/10 hover:bg-amber-500/20 hover:border-amber-400/40 text-slate-100 border border-white/10 text-xs justify-between">
+              <span>Tampak Depan (Hero View)</span>
+              <span class="text-[10px] text-slate-400 font-mono-tech">FRONT</span>
+            </button>
+            <button id="preset-macro" class="btn-studio py-2 px-3 bg-white/10 hover:bg-amber-500/20 hover:border-amber-400/40 text-slate-100 border border-white/10 text-xs justify-between">
+              <span>Makro Inti Dalam (Spiral Film)</span>
+              <span class="text-[10px] text-amber-300 font-mono-tech">MACRO</span>
+            </button>
+            <div class="grid grid-cols-2 gap-2">
+              <button id="preset-side" class="btn-studio py-2 px-3 bg-white/10 hover:bg-amber-500/20 hover:border-amber-400/40 text-slate-100 border border-white/10 text-xs justify-between">
+                <span>Samping</span>
+                <span class="text-[10px] text-slate-400 font-mono-tech">SIDE</span>
+              </button>
+              <button id="preset-top" class="btn-studio py-2 px-3 bg-white/10 hover:bg-amber-500/20 hover:border-amber-400/40 text-slate-100 border border-white/10 text-xs justify-between">
+                <span>Atas</span>
+                <span class="text-[10px] text-slate-400 font-mono-tech">TOP</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Kontrol Arah Kamera & Zoom -->
+        <div class="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="font-semibold text-slate-200 text-xs">Navigasi Orbit & Zoom</span>
+            <button id="btn-autorotate" class="btn-studio px-2.5 py-1 text-[11px] bg-white/10 hover:bg-white/15 text-slate-300 border border-white/10">
+              Auto-Rotasi: OFF
+            </button>
+          </div>
+
+          <!-- D-Pad Kamera -->
+          <div class="grid grid-cols-3 gap-1.5 pt-1">
+            <div></div>
+            <button id="cam-up" class="btn-studio py-2.5 bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-white/10 text-xs" title="Putar Kamera ke Atas">
+              ↑ Atas
+            </button>
+            <div></div>
+
+            <button id="cam-left" class="btn-studio py-2.5 bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-white/10 text-xs" title="Putar Kamera ke Kiri">
+              ← Kiri
+            </button>
+            <button id="cam-center" class="btn-studio py-2.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-400/25 text-[11px]" title="Fokus Tengah">
+              Fokus
+            </button>
+            <button id="cam-right" class="btn-studio py-2.5 bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-white/10 text-xs" title="Putar Kamera ke Kanan">
+              Kanan →
+            </button>
+
+            <div></div>
+            <button id="cam-down" class="btn-studio py-2.5 bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-white/10 text-xs" title="Putar Kamera ke Bawah">
+              ↓ Bawah
+            </button>
+            <div></div>
+          </div>
+
+          <!-- Zoom +/- -->
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <button id="cam-zoom-in" class="btn-studio py-2.5 bg-slate-800/90 hover:bg-slate-700 text-sky-300 border border-white/10 text-xs">
+              + Zoom In
+            </button>
+            <button id="cam-zoom-out" class="btn-studio py-2.5 bg-slate-800/90 hover:bg-slate-700 text-sky-300 border border-white/10 text-xs">
+              − Zoom Out
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: TAMBAH OBJEK KE MEJA KERJA -->
+      <div id="tab-objek" class="tab-content hidden space-y-3.5">
+        <div class="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="font-semibold text-slate-200 text-xs">Tambah Komponen 3D</span>
+            <span id="extra-count-badge" class="font-mono-tech text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-slate-300">0 Objek</span>
+          </div>
+          <p class="text-[11px] text-slate-400">
+            Tambahkan komponen elektronik di sekitar resistor utama pada meja kerja studio:
+          </p>
+          <div class="grid grid-cols-2 gap-2">
+            <button data-spawn="resistor" class="spawn-btn btn-studio py-2.5 px-2.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 border border-amber-400/25 text-[11px]">
+              + Resistor Ekstra
+            </button>
+            <button data-spawn="capacitor" class="spawn-btn btn-studio py-2.5 px-2.5 bg-sky-500/15 hover:bg-sky-500/25 text-sky-200 border border-sky-400/25 text-[11px]">
+              + Kapasitor Elko
+            </button>
+            <button data-spawn="led" class="spawn-btn btn-studio py-2.5 px-2.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-200 border border-emerald-400/25 text-[11px]">
+              + LED Merah/Hijau
+            </button>
+            <button data-spawn="diode" class="spawn-btn btn-studio py-2.5 px-2.5 bg-slate-500/20 hover:bg-slate-500/30 text-slate-200 border border-slate-400/30 text-[11px]">
+              + Dioda 1N4007
+            </button>
+          </div>
+        </div>
+
+        <!-- Inspector Objek Tambahan Terpilih -->
+        <div id="selected-object-panel" class="p-3 rounded-xl bg-white/[0.04] border border-sky-400/30 space-y-3 hidden">
+          <div class="flex items-center justify-between gap-2">
+            <span class="font-semibold text-sky-300 text-xs">Atur Objek Terpilih</span>
+            <button id="btn-delete-selected" class="btn-studio px-2.5 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-400/30 text-[11px]">
+              Hapus
+            </button>
+          </div>
+
+          <select id="select-extra-object" class="studio-select w-full"></select>
+
+          <div class="space-y-2">
+            <div>
+              <div class="flex justify-between text-[11px] text-slate-300 mb-1">
+                <span>Posisi Kiri / Kanan (X)</span>
+                <span id="obj-pos-x-val" class="font-mono-tech text-sky-300">0.0</span>
+              </div>
+              <input id="slider-obj-x" type="range" min="-6.5" max="6.5" step="0.1" value="0" class="studio-slider" />
+            </div>
+
+            <div>
+              <div class="flex justify-between text-[11px] text-slate-300 mb-1">
+                <span>Posisi Depan / Belakang (Z)</span>
+                <span id="obj-pos-z-val" class="font-mono-tech text-sky-300">0.0</span>
+              </div>
+              <input id="slider-obj-z" type="range" min="-4.5" max="4.5" step="0.1" value="0" class="studio-slider" />
+            </div>
+
+            <div>
+              <div class="flex justify-between text-[11px] text-slate-300 mb-1">
+                <span>Rotasi Sudut (Y)</span>
+                <span id="obj-rot-y-val" class="font-mono-tech text-sky-300">0°</span>
+              </div>
+              <input id="slider-obj-rot" type="range" min="0" max="360" step="5" value="0" class="studio-slider" />
+            </div>
+          </div>
+
+          <button id="btn-clear-objects" class="btn-studio w-full py-2 bg-white/5 hover:bg-rose-500/20 text-slate-300 hover:text-rose-200 border border-white/10 text-[11px]">
+            Hapus Semua Objek Tambahan
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- KARTU INFO ANATOMI KOMPONEN (Muncul saat klik bagian 3D / pin label) -->
+  <div id="part-info-card" class="fixed bottom-3 left-3 z-30 w-[calc(100vw-24px)] sm:w-[360px] glass-panel rounded-2xl p-3.5 hidden transition-all duration-200">
+    <div class="flex items-start justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <span id="part-info-dot" class="w-3 h-3 rounded-full bg-amber-400 shrink-0"></span>
+        <h3 id="part-info-title" class="text-xs sm:text-sm font-bold text-white">Lapisan Luar (Cat Pelindung)</h3>
+      </div>
+      <button id="btn-close-part-info" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition" title="Tutup Info">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+    </div>
+    <p id="part-info-desc" class="mt-1.5 text-[11.5px] text-slate-300 leading-relaxed">
+      Cangkang resin/enamel pelindung yang membungkus elemen resistif dari kelembapan, panas, dan benturan mekanis, sekaligus menjadi media kode gelang warna.
+    </p>
+    <div class="mt-2 pt-2 border-t border-white/10 flex items-center justify-between text-[10.5px] text-slate-400">
+      <span id="part-info-material">Material: Resin Epoksi / Enamel Keramik</span>
+      <button id="btn-part-toggle-explode" class="text-amber-300 hover:underline font-semibold">Buka / Tutup Cangkang</button>
+    </div>
+  </div>
+
+  <!-- SUBTITLE NARASI CINEMATIC TOUR -->
+  <div id="tour-subtitle-box" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-20 w-[calc(100vw-24px)] max-w-xl glass-panel rounded-2xl px-4 py-3 hidden pointer-events-none">
+    <div class="flex items-center gap-2 mb-1">
+      <span id="tour-stage-tag" class="px-2 py-0.5 rounded-md bg-sky-500/25 text-sky-300 border border-sky-400/30 font-mono-tech text-[10px] font-bold">
+        TAHAP 1/4
+      </span>
+      <span id="tour-stage-title" class="text-xs font-semibold text-amber-300">Bentuk Fisik & Kode Warna</span>
+    </div>
+    <p id="tour-subtitle-text" class="text-xs sm:text-[13px] text-slate-100 leading-relaxed">
+      Mengamati bentuk fisik resistor aksial 4-gelang dengan lapisan pelindung mengilap dan kode warna 22 Ω ±5%.
+    </p>
+  </div>
+
+  <!-- SCRIPT UTAMA THREE.JS (ES MODULES) -->
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+    // =========================================================================
+    // 1. DATA KONFIGURASI GELANG WARNA & ANATOMI RESISTOR
+    // =========================================================================
+    const BAND_DIGITS = [
+      { name: 'Hitam',   val: 0, hex: '#14171d', metallic: false },
+      { name: 'Cokelat', val: 1, hex: '#6b3e26', metallic: false },
+      { name: 'Merah',   val: 2, hex: '#dc2626', metallic: false },
+      { name: 'Oranye',  val: 3, hex: '#f97316', metallic: false },
+      { name: 'Kuning',  val: 4, hex: '#facc15', metallic: false },
+      { name: 'Hijau',   val: 5, hex: '#16a34a', metallic: false },
+      { name: 'Biru',    val: 6, hex: '#2563eb', metallic: false },
+      { name: 'Ungu',    val: 7, hex: '#7c3aed', metallic: false },
+      { name: 'Abu-abu', val: 8, hex: '#64748b', metallic: false },
+      { name: 'Putih',   val: 9, hex: '#f8fafc', metallic: false },
+    ];
+
+    const BAND_MULTIPLIERS = [
+      { name: 'Hitam (×1 Ω)',       mult: 1,       label: '×1 Ω',    hex: '#14171d', metallic: false },
+      { name: 'Cokelat (×10 Ω)',    mult: 10,      label: '×10 Ω',   hex: '#6b3e26', metallic: false },
+      { name: 'Merah (×100 Ω)',     mult: 100,     label: '×100 Ω',  hex: '#dc2626', metallic: false },
+      { name: 'Oranye (×1 kΩ)',     mult: 1000,    label: '×1 kΩ',   hex: '#f97316', metallic: false },
+      { name: 'Kuning (×10 kΩ)',    mult: 10000,   label: '×10 kΩ',  hex: '#facc15', metallic: false },
+      { name: 'Hijau (×100 kΩ)',    mult: 100000,  label: '×100 kΩ', hex: '#16a34a', metallic: false },
+      { name: 'Biru (×1 MΩ)',       mult: 1000000, label: '×1 MΩ',   hex: '#2563eb', metallic: false },
+      { name: 'Emas (×0.1 Ω)',      mult: 0.1,     label: '×0.1 Ω',  hex: '#e2b13c', metallic: true },
+      { name: 'Perak (×0.01 Ω)',    mult: 0.01,    label: '×0.01 Ω', hex: '#cbd5e1', metallic: true },
+    ];
+
+    const BAND_TOLERANCES = [
+      { name: 'Cokelat (±1%)',   tol: 1,    label: '±1%',    hex: '#6b3e26', metallic: false },
+      { name: 'Merah (±2%)',     tol: 2,    label: '±2%',    hex: '#dc2626', metallic: false },
+      { name: 'Hijau (±0.5%)',   tol: 0.5,  label: '±0.5%',  hex: '#16a34a', metallic: false },
+      { name: 'Biru (±0.25%)',   tol: 0.25, label: '±0.25%', hex: '#2563eb', metallic: false },
+      { name: 'Ungu (±0.1%)',    tol: 0.1,  label: '±0.1%',  hex: '#7c3aed', metallic: false },
+      { name: 'Emas (±5%)',      tol: 5,    label: '±5%',    hex: '#e2b13c', metallic: true },
+      { name: 'Perak (±10%)',    tol: 10,   label: '±10%',   hex: '#cbd5e1', metallic: true },
+    ];
+
+    const ANATOMY_INFO = {
+      coating: {
+        title: 'Lapisan Luar (Cat Pelindung)',
+        dotColor: '#d8b074',
+        material: 'Material: Enamel Keramik / Resin Epoksi Solid (Opaque)',
+        desc: 'Cangkang isolator luar berdinding tebal yang melindungi inti resistif dari kelembapan, oksidasi, dan benturan mekanis. Permukaannya dilapisi cat enamel krem padat yang tidak tembus pandang.'
+      },
+      bands: {
+        title: 'Gelang Warna (Kode Nilai Resistansi)',
+        dotColor: '#ef4444',
+        material: 'Material: Lapisan Pigmen Enamel Tebal & Foil Metalik',
+        desc: 'Empat pita warna solid berketebalan nyata yang melingkari badan resistor. Gelang 1 dan 2 menunjukkan dua digit pertama nilai resistansi, Gelang 3 adalah faktor pengali, dan Gelang 4 menentukan persentase toleransi.'
+      },
+      core: {
+        title: 'Bahan Resistif (Karbon / Film Metal)',
+        dotColor: '#a855f7',
+        material: 'Material: Substrat Keramik & Lilitan Spiral Film Logam',
+        desc: 'Inti silindris keramik/karbon yang dilapisi lapisan resistif dan dipotong membentuk alur spiral heliks presisi. Panjang dan ketebalan jalur spiral ini menentukan besar kecilnya hambatan listrik.'
+      },
+      endcap: {
+        title: 'Penutup Ujung (End Cap)',
+        dotColor: '#34d399',
+        material: 'Material: Baja Sikat Berlapis Timah (Brushed Steel)',
+        desc: 'Dua tutup logam konduktif yang dipasang menekan kedua ujung batang keramik resistif untuk menyalurkan arus listrik secara merata dari kaki terminal ke seluruh jalur spiral resistif.'
+      },
+      terminal: {
+        title: 'Kaki Resistor (Terminal)',
+        dotColor: '#fb7185',
+        material: 'Material: Kawat Tembaga Berlapis Timah (Tinned Copper)',
+        desc: 'Kawat penghantar aksial berujung chamfer di kedua sisi resistor yang berfungsi menghubungkan dan menyolder komponen ke papan sirkuit cetak (PCB) atau breadboard.'
+      }
+    };
+
+    // State Aplikasi
+    const state = {
+      band1: 2, // Merah (2)
+      band2: 2, // Merah (2)
+      band3: 0, // Hitam (×1)
+      band4: 5, // Emas (±5%) -> Default 22 Ω ±5%
+      explodeTarget: 0,
+      explodeCurrent: 0,
+      labelsVisible: true,
+      autoRotate: false,
+      selectedPart: null,
+      tourState: 'idle', // 'idle' | 'playing' | 'paused'
+      tourTime: 0,
+      tourDuration: 24.0,
+      cameraAnim: null,
+      extraObjects: [],
+      selectedExtraId: null,
+      extraCounter: 0
+    };
+
+    // =========================================================================
+    // 2. INISIALISASI SCENE, RENDERER, STUDIO ENVIRONMENT & KAMERA
+    // =========================================================================
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color('#0c1018');
+    scene.fog = new THREE.FogExp2('#0c1018', 0.026);
+
+    const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
+    const INITIAL_CAM_POS = new THREE.Vector3(0.4, 2.35, 7.6);
+    const INITIAL_CAM_TARGET = new THREE.Vector3(0.0, 1.15, 0.0);
+    camera.position.copy(INITIAL_CAM_POS);
+
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      preserveDrawingBuffer: true, // Wajib agar screenshot PNG selalu tajam & utuh
+      powerPreference: 'high-performance'
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.08;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
+
+    // Studio Environment PBR (RoomEnvironment + PMREMGenerator)
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    const roomEnv = new RoomEnvironment();
+    const envRT = pmremGenerator.fromScene(roomEnv, 0.04);
+    scene.environment = envRT.texture;
+    scene.environmentIntensity = 0.85;
+    roomEnv.dispose();
+
+    // OrbitControls dengan Damping Mulus
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.copy(INITIAL_CAM_TARGET);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.065;
+    controls.minDistance = 2.1;
+    controls.maxDistance = 18.0;
+    controls.maxPolarAngle = Math.PI * 0.485; // Menjaga kamera tetap di atas permukaan meja kerja
+    controls.update();
+
+    // Jika pengguna menggerakkan kamera manual saat Cinematic Tour berjalan -> jeda otomatis mulus
+    controls.addEventListener('start', () => {
+      state.cameraAnim = null;
+      if (state.tourState === 'playing') {
+        pauseCinematicTour(true);
+      }
+    });
+
+    // Pencahayaan Studio 3-Titik + Bayangan Halus
+    const ambientLight = new THREE.HemisphereLight('#dbeafe', '#1e293b', 0.45);
+    scene.add(ambientLight);
+
+    const keyLight = new THREE.DirectionalLight('#fff8eb', 2.1);
+    keyLight.position.set(4.5, 8.5, 5.5);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.set(2048, 2048);
+    keyLight.shadow.camera.near = 1;
+    keyLight.shadow.camera.far = 25;
+    const dShadow = 7.5;
+    keyLight.shadow.camera.left = -dShadow;
+    keyLight.shadow.camera.right = dShadow;
+    keyLight.shadow.camera.top = dShadow;
+    keyLight.shadow.camera.bottom = -dShadow;
+    keyLight.shadow.bias = -0.0004;
+    keyLight.shadow.normalBias = 0.015;
+    scene.add(keyLight);
+
+    const fillLight = new THREE.DirectionalLight('#bae6fd', 0.85);
+    fillLight.position.set(-6.0, 4.0, 3.5);
+    scene.add(fillLight);
+
+    const rimLight = new THREE.DirectionalLight('#fde68a', 1.1);
+    rimLight.position.set(0.0, 4.5, -6.5);
+    scene.add(rimLight);
+
+    // =========================================================================
+    // 3. TEKSTUR PROSEDURAL REALISTIS (CANVAS 2D)
+    // =========================================================================
+
+    // Tekstur Meja Kerja Studio dengan Grid Presisi Halus
+    function createWorkbenchTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1024;
+      canvas.height = 1024;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = '#151b26';
+      ctx.fillRect(0, 0, 1024, 1024);
+
+      // Noise halus permukaan matte ESD mat
+      for (let i = 0; i < 18000; i++) {
+        const x = Math.random() * 1024;
+        const y = Math.random() * 1024;
+        const shade = Math.random() > 0.5 ? 'rgba(255,255,255,0.018)' : 'rgba(0,0,0,0.03)';
+        ctx.fillStyle = shade;
+        ctx.fillRect(x, y, 2, 2);
+      }
+
+      // Garis grid teknis halus
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.08)';
+      ctx.lineWidth = 1;
+      const step = 64;
+      for (let i = 0; i <= 1024; i += step) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i, 1024);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(0, i);
+        ctx.lineTo(1024, i);
+        ctx.stroke();
+      }
+
+      // Garis aksen utama
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.14)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(16, 16, 992, 992);
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(4, 4);
+      tex.anisotropy = 8;
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    }
+
+    // Tekstur Inti Karbon / Keramik Abu-Abu Gelap Berbintik Kasar
+    function createCarbonCoreTextures() {
+      const size = 512;
+      const diffCanvas = document.createElement('canvas');
+      diffCanvas.width = size;
+      diffCanvas.height = size;
+      const dCtx = diffCanvas.getContext('2d');
+
+      const bumpCanvas = document.createElement('canvas');
+      bumpCanvas.width = size;
+      bumpCanvas.height = size;
+      const bCtx = bumpCanvas.getContext('2d');
+
+      dCtx.fillStyle = '#3b3e45';
+      dCtx.fillRect(0, 0, size, size);
+      bCtx.fillStyle = '#808080';
+      bCtx.fillRect(0, 0, size, size);
+
+      // Butiran karbon & keramik sintered realistis
+      for (let i = 0; i < 28000; i++) {
+        const x = Math.random() * size;
+        const y = Math.random() * size;
+        const r = 0.7 + Math.random() * 1.9;
+        const v = Math.floor(35 + Math.random() * 68);
+        dCtx.fillStyle = `rgb(${v}, ${v + 2}, ${v + 5})`;
+        dCtx.beginPath();
+        dCtx.arc(x, y, r, 0, Math.PI * 2);
+        dCtx.fill();
+
+        const bv = Math.floor(40 + Math.random() * 180);
+        bCtx.fillStyle = `rgb(${bv}, ${bv}, ${bv})`;
+        bCtx.fillRect(x, y, r, r);
+      }
+
+      const map = new THREE.CanvasTexture(diffCanvas);
+      map.wrapS = THREE.RepeatWrapping;
+      map.wrapT = THREE.RepeatWrapping;
+      map.repeat.set(3, 2);
+      map.colorSpace = THREE.SRGBColorSpace;
+
+      const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+      bumpMap.wrapS = THREE.RepeatWrapping;
+      bumpMap.wrapT = THREE.RepeatWrapping;
+      bumpMap.repeat.set(3, 2);
+
+      return { map, bumpMap };
+    }
+
+    // Tekstur Baja Sikat (Brushed Metal) untuk End Cap & Kawat Terminal
+    function createBrushedMetalTexture() {
+      const size = 512;
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = '#7a7a7a';
+      ctx.fillRect(0, 0, size, size);
+
+      for (let y = 0; y < size; y++) {
+        const tone = Math.floor(95 + Math.random() * 65);
+        ctx.fillStyle = `rgb(${tone}, ${tone}, ${tone})`;
+        ctx.fillRect(0, y, size, 1 + Math.random() * 1.2);
+      }
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      return tex;
+    }
+
+    // Tekstur Dinamis Lapisan Luar Cat Pelindung + 4 Gelang Warna + Metalness Map
+    const coatDiffCanvas = document.createElement('canvas');
+    coatDiffCanvas.width = 2048;
+    coatDiffCanvas.height = 1024;
+    const coatDiffCtx = coatDiffCanvas.getContext('2d');
+
+    const coatMetalCanvas = document.createElement('canvas');
+    coatMetalCanvas.width = 2048;
+    coatMetalCanvas.height = 1024;
+    const coatMetalCtx = coatMetalCanvas.getContext('2d');
+
+    const coatRoughCanvas = document.createElement('canvas');
+    coatRoughCanvas.width = 2048;
+    coatRoughCanvas.height = 1024;
+    const coatRoughCtx = coatRoughCanvas.getContext('2d');
+
+    const coatDiffTex = new THREE.CanvasTexture(coatDiffCanvas);
+    coatDiffTex.colorSpace = THREE.SRGBColorSpace;
+    coatDiffTex.anisotropy = 8;
+
+    const coatMetalTex = new THREE.CanvasTexture(coatMetalCanvas);
+    const coatRoughTex = new THREE.CanvasTexture(coatRoughCanvas);
+
+    // Pre-generate micro-grain noise layer untuk permukaan cat pernis
+    const grainCanvas = document.createElement('canvas');
+    grainCanvas.width = 512;
+    grainCanvas.height = 512;
+    const grainCtx = grainCanvas.getContext('2d');
+    for (let i = 0; i < 12000; i++) {
+      const gx = Math.random() * 512;
+      const gy = Math.random() * 512;
+      grainCtx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.03)' : 'rgba(90,55,15,0.035)';
+      grainCtx.fillRect(gx, gy, 2, 2);
+    }
+
+    function updateResistorCoatTextures() {
+      const W = 2048;
+      const H = 1024;
+      const extH = 860; // Area luar bodi resistor (v: 0.16 .. 1.0 -> top of canvas)
+
+      // 1. Warna Dasar Krem / Tan Hangat Solid 100% Opaque (#d8b074)
+      coatDiffCtx.globalAlpha = 1.0;
+      coatDiffCtx.globalCompositeOperation = 'source-over';
+      coatDiffCtx.fillStyle = '#d8b074';
+      coatDiffCtx.fillRect(0, 0, W, extH);
+
+      // Gradasi pencahayaan mikro lembut pada bodi
+      const grad = coatDiffCtx.createLinearGradient(0, 0, W, 0);
+      grad.addColorStop(0.0, 'rgba(130, 88, 35, 0.12)');
+      grad.addColorStop(0.18, 'rgba(255, 244, 222, 0.06)');
+      grad.addColorStop(0.5, 'rgba(255, 255, 255, 0.0)');
+      grad.addColorStop(0.82, 'rgba(255, 244, 222, 0.06)');
+      grad.addColorStop(1.0, 'rgba(130, 88, 35, 0.12)');
+      coatDiffCtx.fillStyle = grad;
+      coatDiffCtx.fillRect(0, 0, W, extH);
+
+      // Tekstur mikro-roughness cat pernis
+      const pattern = coatDiffCtx.createPattern(grainCanvas, 'repeat');
+      coatDiffCtx.fillStyle = pattern;
+      coatDiffCtx.fillRect(0, 0, W, extH);
+
+      // Area dinding potongan dalam (v: 0.0 .. 0.16 -> bagian bawah canvas)
+      coatDiffCtx.fillStyle = '#ead7b7';
+      coatDiffCtx.fillRect(0, extH, W, H - extH);
+      coatDiffCtx.fillStyle = 'rgba(110, 80, 42, 0.22)';
+      coatDiffCtx.fillRect(0, extH, W, 14);
+
+      // Default Metalness & Roughness untuk cat keramik luar (non-metalik, kilau halus)
+      coatMetalCtx.fillStyle = '#000000';
+      coatMetalCtx.fillRect(0, 0, W, H);
+
+      coatRoughCtx.fillStyle = '#3d3d3d';
+      coatRoughCtx.fillRect(0, 0, W, extH);
+      coatRoughCtx.fillStyle = '#9e9e9e';
+      coatRoughCtx.fillRect(0, extH, W, H - extH);
+
+      coatDiffTex.needsUpdate = true;
+      coatMetalTex.needsUpdate = true;
+      coatRoughTex.needsUpdate = true;
+    }
+
+    // =========================================================================
+    // 4. PEMBANGUNAN GEOMETRI 3D RESISTOR HERO (REALISTIS, SOLID & OPAQUE)
+    // =========================================================================
+    // 4. PEMBANGUNAN GEOMETRI 3D RESISTOR HERO (REALISTIS & WATERTIGHT)
+    // =========================================================================
+
+    // Panggung Meja Kerja Studio
+    const benchTex = createWorkbenchTexture();
+    const benchGeo = new THREE.CylinderGeometry(13.5, 13.5, 0.4, 72);
+    const benchMat = new THREE.MeshStandardMaterial({
+      map: benchTex,
+      roughness: 0.78,
+      metalness: 0.08
+    });
+    const benchMesh = new THREE.Mesh(benchGeo, benchMat);
+    benchMesh.position.y = -0.2;
+    benchMesh.receiveShadow = true;
+    scene.add(benchMesh);
+
+    // Ring dekoratif tipis di meja kerja
+    const stageRingGeo = new THREE.RingGeometry(4.85, 4.92, 96);
+    const stageRingMat = new THREE.MeshBasicMaterial({
+      color: '#38bdf8',
+      transparent: true,
+      opacity: 0.16,
+      side: THREE.DoubleSide
+    });
+    const stageRing = new THREE.Mesh(stageRingGeo, stageRingMat);
+    stageRing.rotation.x = -Math.PI / 2;
+    stageRing.position.y = 0.003;
+    scene.add(stageRing);
+
+    // Penyangga Akrilik Transparan Minimalis untuk Kaki Resistor Utama
+    const standMat = new THREE.MeshPhysicalMaterial({
+      color: '#cbd5e1',
+      transmission: 0.72,
+      opacity: 1,
+      transparent: true,
+      roughness: 0.15,
+      ior: 1.48,
+      thickness: 0.2
+    });
+    [-3.15, 3.15].forEach((sx) => {
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.38, 0.08, 24), standMat);
+      base.position.set(sx, 0.04, 0);
+      base.castShadow = true;
+      base.receiveShadow = true;
+      scene.add(base);
+
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 1.08, 16), standMat);
+      pillar.position.set(sx, 0.58, 0);
+      pillar.castShadow = true;
+      scene.add(pillar);
+    });
+
+    // Grup Utama Hero Resistor (berada pada ketinggian y = 1.15 di atas meja)
+    const heroGroup = new THREE.Group();
+    heroGroup.position.set(0, 1.15, 0);
+    scene.add(heroGroup);
+
+    // Helper: Profil Radius Luar Dog-Bone Resistor Aksial untuk x in [-2.20, +2.20]
+    function getOuterBodyRadius(x) {
+      const ax = Math.abs(x);
+      const L = 2.20;
+      if (ax >= L) return 0.092;
+
+      // Ujung membulat halus dari ax = 2.20 ke ax = 1.62
+      if (ax > 1.62) {
+        const t = (L - ax) / (L - 1.62); // 0 di ujung -> 1 di bahu puncak
+        const smooth = Math.sin(t * Math.PI * 0.5);
+        return 0.092 + (0.765 - 0.092) * Math.pow(smooth, 0.72);
+      }
+      // Transisi bahu (ax = 1.62, r = 0.765) ke pinggang silindris (ax = 1.24, r = 0.675)
+      if (ax > 1.24) {
+        const t = (ax - 1.24) / (1.62 - 1.24);
+        const s = t * t * (3 - 2 * t);
+        return 0.675 + (0.765 - 0.675) * s;
+      }
+      // Bagian tengah silindris klasik
+      return 0.675;
+    }
+
+    // Helper: Membangun Mesh Cangkang Berdinding Tebal Watertight (Solid Sector Revolusi X)
+    function createThickAxialShellSector({ xMin, xMax, phiStart, phiLength, radialSegments = 64, axialSteps = 44, hollowInner = true }) {
+      const isFullCircle = Math.abs(phiLength - Math.PI * 2) < 1e-4;
+
+      // Bangun loop profil 2D tertutup: titik luar (xMin -> xMax) lalu titik dalam (xMax -> xMin)
+      const profile = []; // { x, r, isInner }
+
+      for (let i = 0; i <= axialSteps; i++) {
+        const t = i / axialSteps;
+        const x = xMin + (xMax - xMin) * t;
+        const rOut = getOuterBodyRadius(x);
+        profile.push({ x, r: rOut, isInner: false });
+      }
+
+      if (hollowInner) {
+        for (let i = axialSteps; i >= 0; i--) {
+          const t = i / axialSteps;
+          const x = xMin + (xMax - xMin) * t;
+          const rOut = getOuterBodyRadius(x);
+          // Rongga dalam silindris r = 0.535 pada area inti, merapat ke rOut di ujung
+          const rIn = Math.min(0.535, Math.max(0.092, rOut - 0.085));
+          profile.push({ x, r: rIn, isInner: true });
+        }
+      } else {
+        // Tutup ke sumbu pusat jika solid
+        profile.push({ x: xMax, r: 0.092, isInner: true });
+        profile.push({ x: xMin, r: 0.092, isInner: true });
+      }
+
+      const P = profile.length;
+      const positions = [];
+      const uvs = [];
+      const indices = [];
+
+      // 1. Permukaan Revolusi (Luar + Dalam + Dinding Ujung Aksial)
+      for (let s = 0; s <= radialSegments; s++) {
+        const vFrac = s / radialSegments;
+        const phi = phiStart + phiLength * vFrac;
+        const cosP = Math.cos(phi);
+        const sinP = Math.sin(phi);
+
+        for (let p = 0; p < P; p++) {
+          const pt = profile[p];
+          const y = pt.r * cosP;
+          const z = pt.r * sinP;
+          positions.push(pt.x, y, z);
+
+          // UV: u = posisi aksial (-2.20..2.20 -> 0..1), v = 0.20..1.0 untuk kulit luar, 0.04..0.14 untuk dinding dalam
+          const u = (pt.x + 2.20) / 4.40;
+          const v = pt.isInner ? 0.08 : (0.22 + 0.76 * vFrac);
+          uvs.push(u, v);
+        }
+      }
+
+      for (let s = 0; s < radialSegments; s++) {
+        for (let p = 0; p < P; p++) {
+          const pNext = (p + 1) % P;
+          const a = s * P + p;
+          const b = (s + 1) * P + p;
+          const c = (s + 1) * P + pNext;
+          const d = s * P + pNext;
+
+          // Winding CCW dari luar sehingga seluruh normal dinding luar mengarah keluar (FrontSide solid)
+          indices.push(a, b, d);
+          indices.push(b, c, d);
+        }
+      }
+
+      // 2. Tutup Bidang Potongan Radial (jika phiLength < 2π) agar 100% solid tanpa celah backface
+      if (!isFullCircle) {
+        const contour2D = profile.map((pt) => new THREE.Vector2(pt.x, pt.r));
+        const capTriangles = THREE.ShapeUtils.triangulateShape(contour2D, []);
+
+        // Tutup pada phi = phiStart dan phi = phiStart + phiLength
+        [
+          { phi: phiStart, flip: true },
+          { phi: phiStart + phiLength, flip: false }
+        ].forEach(({ phi, flip }) => {
+          const baseIndex = positions.length / 3;
+          const cosP = Math.cos(phi);
+          const sinP = Math.sin(phi);
+
+          for (let p = 0; p < P; p++) {
+            const pt = profile[p];
+            positions.push(pt.x, pt.r * cosP, pt.r * sinP);
+            const u = (pt.x + 2.20) / 4.40;
+            uvs.push(u, 0.08); // Pemetaan ke area dinding potongan krim
+          }
+
+          for (let t = 0; t < capTriangles.length; t++) {
+            const [i0, i1, i2] = capTriangles[t];
+            if (flip) {
+              indices.push(baseIndex + i0, baseIndex + i2, baseIndex + i1);
+            } else {
+              indices.push(baseIndex + i0, baseIndex + i1, baseIndex + i2);
+            }
+          }
+        });
+      }
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+      geo.setIndex(indices);
+      geo.computeVertexNormals();
+      return geo;
+    }
+
+    // Helper: Geometri 3D Gelang Warna Berketebalan Nyata (Thick-Walled Solid Band Sleeve/Sector)
+    // Sedikit menonjol di atas cangkang luar (+0.016) dengan bevel halus & tertanam (-0.016) agar bebas z-fighting & 100% opaque
+    function createThickColorBandSector({ xMin, xMax, phiStart, phiLength, radialSegments = 64 }) {
+      const isFullCircle = Math.abs(phiLength - Math.PI * 2) < 1e-4;
+      const bevel = Math.min(0.022, (xMax - xMin) * 0.14);
+      const protrude = 0.016;
+      const embed = 0.016;
+
+      // Profil penampang padat tertutup untuk gelang warna (dengan tepi bevel di kedua sisi)
+      const axialSamples = [
+        { x: xMin,          lift: 0.003 },
+        { x: xMin + bevel,  lift: protrude },
+        { x: (xMin + xMax) * 0.5, lift: protrude },
+        { x: xMax - bevel,  lift: protrude },
+        { x: xMax,          lift: 0.003 }
+      ];
+
+      const profile = [];
+      for (let i = 0; i < axialSamples.length; i++) {
+        const s = axialSamples[i];
+        profile.push({ x: s.x, r: getOuterBodyRadius(s.x) + s.lift, isInner: false });
+      }
+      for (let i = axialSamples.length - 1; i >= 0; i--) {
+        const s = axialSamples[i];
+        profile.push({ x: s.x, r: getOuterBodyRadius(s.x) - embed, isInner: true });
+      }
+
+      const P = profile.length;
+      const positions = [];
+      const uvs = [];
+      const indices = [];
+
+      for (let s = 0; s <= radialSegments; s++) {
+        const vFrac = s / radialSegments;
+        const phi = phiStart + phiLength * vFrac;
+        const cosP = Math.cos(phi);
+        const sinP = Math.sin(phi);
+
+        for (let p = 0; p < P; p++) {
+          const pt = profile[p];
+          positions.push(pt.x, pt.r * cosP, pt.r * sinP);
+          uvs.push((pt.x - xMin) / Math.max(0.001, xMax - xMin), vFrac);
+        }
+      }
+
+      for (let s = 0; s < radialSegments; s++) {
+        for (let p = 0; p < P; p++) {
+          const pNext = (p + 1) % P;
+          const a = s * P + p;
+          const b = (s + 1) * P + p;
+          const c = (s + 1) * P + pNext;
+          const d = s * P + pNext;
+
+          indices.push(a, b, d);
+          indices.push(b, c, d);
+        }
+      }
+
+      // Tutup bidang irisan radial pada gelang warna saat terbelah agar tampak padat pejal
+      if (!isFullCircle) {
+        const contour2D = profile.map((pt) => new THREE.Vector2(pt.x, pt.r));
+        const capTriangles = THREE.ShapeUtils.triangulateShape(contour2D, []);
+
+        [
+          { phi: phiStart, flip: true },
+          { phi: phiStart + phiLength, flip: false }
+        ].forEach(({ phi, flip }) => {
+          const baseIndex = positions.length / 3;
+          const cosP = Math.cos(phi);
+          const sinP = Math.sin(phi);
+
+          for (let p = 0; p < P; p++) {
+            const pt = profile[p];
+            positions.push(pt.x, pt.r * cosP, pt.r * sinP);
+            uvs.push(0.5, 0.5);
+          }
+
+          for (let t = 0; t < capTriangles.length; t++) {
+            const [i0, i1, i2] = capTriangles[t];
+            if (flip) {
+              indices.push(baseIndex + i0, baseIndex + i2, baseIndex + i1);
+            } else {
+              indices.push(baseIndex + i0, baseIndex + i1, baseIndex + i2);
+            }
+          }
+        });
+      }
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+      geo.setIndex(indices);
+      geo.computeVertexNormals();
+      return geo;
+    }
+
+    // Material Lapisan Luar (Cat Pelindung + Pernis Clearcoat — 100% Solid & Tidak Tembus Pandang)
+    updateResistorCoatTextures();
+    const outerCoatMaterial = new THREE.MeshPhysicalMaterial({
+      map: coatDiffTex,
+      metalnessMap: coatMetalTex,
+      roughnessMap: coatRoughTex,
+      metalness: 1.0,
+      roughness: 1.0,
+      clearcoat: 0.85,
+      clearcoatRoughness: 0.14,
+      reflectivity: 0.9,
+      transparent: false,
+      opacity: 1.0,
+      depthWrite: true,
+      depthTest: true,
+      side: THREE.FrontSide
+    });
+
+    // Grup Lapisan Luar (terdiri dari Cangkang Utama & Jendela Potongan Depan-Atas)
+    const coatingGroup = new THREE.Group();
+    heroGroup.add(coatingGroup);
+
+    // a) Kubah Kiri Penuh (x: -2.20 .. -1.42) — membawa Gelang 1 secara utuh
+    const leftDomeGeo = createThickAxialShellSector({
+      xMin: -2.20,
+      xMax: -1.42,
+      phiStart: 0,
+      phiLength: Math.PI * 2,
+      radialSegments: 64,
+      axialSteps: 22
+    });
+    const leftDomeMesh = new THREE.Mesh(leftDomeGeo, outerCoatMaterial);
+    leftDomeMesh.castShadow = true;
+    leftDomeMesh.receiveShadow = true;
+    leftDomeMesh.userData.partKey = 'coating';
+
+    // b) Kubah Kanan Penuh (x: +1.42 .. +2.20)
+    const rightDomeGeo = createThickAxialShellSector({
+      xMin: 1.42,
+      xMax: 2.20,
+      phiStart: 0,
+      phiLength: Math.PI * 2,
+      radialSegments: 64,
+      axialSteps: 22
+    });
+    const rightDomeMesh = new THREE.Mesh(rightDomeGeo, outerCoatMaterial);
+    rightDomeMesh.castShadow = true;
+    rightDomeMesh.receiveShadow = true;
+    rightDomeMesh.userData.partKey = 'coating';
+
+    // c) Dudukan Cangkang Belakang-Bawah (x: -1.42 .. +1.42, busur 215° menopang dari belakang & bawah)
+    // Sudut phi: 0 = +Y (atas), π/2 = +Z (depan), π = -Y (bawah), 3π/2 = -Z (belakang)
+    // Jendela terbuka menghadap depan-atas: phi dari -0.35 rad (-20°) sampai +1.95 rad (+112°) -> lebar 2.30 rad (~132°)
+    const windowStart = -0.35;
+    const windowLength = 2.30;
+    const cradleStart = windowStart + windowLength;
+    const cradleLength = Math.PI * 2 - windowLength;
+
+    const lowerCradleGeo = createThickAxialShellSector({
+      xMin: -1.42,
+      xMax: 1.42,
+      phiStart: cradleStart,
+      phiLength: cradleLength,
+      radialSegments: 48,
+      axialSteps: 24
+    });
+    const lowerCradleMesh = new THREE.Mesh(lowerCradleGeo, outerCoatMaterial);
+    lowerCradleMesh.castShadow = true;
+    lowerCradleMesh.receiveShadow = true;
+    lowerCradleMesh.userData.partKey = 'coating';
+
+    // Gabungkan bagian cangkang statis/utama ke dalam mainShellGroup
+    const mainShellGroup = new THREE.Group();
+    mainShellGroup.add(leftDomeMesh, rightDomeMesh, lowerCradleMesh);
+    coatingGroup.add(mainShellGroup);
+
+    // d) Potongan Cangkang Depan-Atas yang Terbelah & Terangkat saat Mode Pemecahan!
+    const cutawayWindowGeo = createThickAxialShellSector({
+      xMin: -1.42,
+      xMax: 1.42,
+      phiStart: windowStart,
+      phiLength: windowLength,
+      radialSegments: 42,
+      axialSteps: 24
+    });
+    const cutawayWindowMesh = new THREE.Mesh(cutawayWindowGeo, outerCoatMaterial);
+    cutawayWindowMesh.castShadow = true;
+    cutawayWindowMesh.receiveShadow = true;
+    cutawayWindowMesh.userData.partKey = 'coating';
+    coatingGroup.add(cutawayWindowMesh);
+
+    // e) 4 Gelang Warna 3D Solid & Tebal (terbelah presisi mengikuti jendela potongan & dudukan bawah)
+    const brushedBandTex = createBrushedMetalTexture();
+    const bandMaterials = [0, 1, 2, 3].map(() => new THREE.MeshPhysicalMaterial({
+      color: '#dc2626',
+      metalness: 0.04,
+      roughness: 0.24,
+      clearcoat: 0.78,
+      clearcoatRoughness: 0.14,
+      transparent: false,
+      opacity: 1.0,
+      depthWrite: true,
+      depthTest: true,
+      side: THREE.FrontSide
+    }));
+
+    const BAND_AXIAL_SPANS = [
+      { xMin: -1.30, xMax: -1.06 }, // Gelang 1 (Digit 1)
+      { xMin: -0.76, xMax: -0.52 }, // Gelang 2 (Digit 2)
+      { xMin: -0.22, xMax:  0.02 }, // Gelang 3 (Pengali / Multiplier)
+      { xMin:  0.76, xMax:  1.02 }  // Gelang 4 (Toleransi)
+    ];
+
+    BAND_AXIAL_SPANS.forEach((span, idx) => {
+      // Bagian bawah-belakang gelang yang menempel pada mainShellGroup
+      const lowerBandGeo = createThickColorBandSector({
+        xMin: span.xMin,
+        xMax: span.xMax,
+        phiStart: cradleStart,
+        phiLength: cradleLength,
+        radialSegments: 48
+      });
+      const lowerBandMesh = new THREE.Mesh(lowerBandGeo, bandMaterials[idx]);
+      lowerBandMesh.castShadow = true;
+      lowerBandMesh.receiveShadow = true;
+      lowerBandMesh.userData.partKey = 'bands';
+      mainShellGroup.add(lowerBandMesh);
+
+      // Bagian depan-atas gelang yang ikut terangkat saat cangkang dipecahkan
+      const upperBandGeo = createThickColorBandSector({
+        xMin: span.xMin,
+        xMax: span.xMax,
+        phiStart: windowStart,
+        phiLength: windowLength,
+        radialSegments: 42
+      });
+      const upperBandMesh = new THREE.Mesh(upperBandGeo, bandMaterials[idx]);
+      upperBandMesh.castShadow = true;
+      upperBandMesh.receiveShadow = true;
+      upperBandMesh.userData.partKey = 'bands';
+      cutawayWindowMesh.add(upperBandMesh);
+    });
+
+    function sync3DBandMaterials() {
+      const bandDataList = [
+        BAND_DIGITS[state.band1],
+        BAND_DIGITS[state.band2],
+        BAND_MULTIPLIERS[state.band3],
+        BAND_TOLERANCES[state.band4]
+      ];
+
+      bandDataList.forEach((data, idx) => {
+        const mat = bandMaterials[idx];
+        mat.color.set(data.hex);
+        mat.transparent = false;
+        mat.opacity = 1.0;
+        mat.depthWrite = true;
+        mat.depthTest = true;
+
+        if (data.metallic) {
+          // Efek logam padat Emas / Perak yang realistis & 100% opaque
+          mat.metalness = 0.85;
+          mat.roughness = 0.22;
+          mat.roughnessMap = brushedBandTex;
+          mat.bumpMap = brushedBandTex;
+          mat.bumpScale = 0.004;
+          mat.clearcoat = 0.45;
+        } else {
+          // Cat enamel solid mengilap & tidak tembus pandang
+          mat.metalness = 0.04;
+          mat.roughness = 0.24;
+          mat.roughnessMap = null;
+          mat.bumpMap = null;
+          mat.clearcoat = 0.78;
+        }
+        mat.needsUpdate = true;
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // 4B. BAHAN RESISTIF (INTI KARBON BERBINTIK + LILITAN SPIRAL FILM LOGAM)
+    // -------------------------------------------------------------------------
+    const coreGroup = new THREE.Group();
+    heroGroup.add(coreGroup);
+
+    const { map: carbonDiffMap, bumpMap: carbonBumpMap } = createCarbonCoreTextures();
+    const carbonCoreMat = new THREE.MeshStandardMaterial({
+      map: carbonDiffMap,
+      bumpMap: carbonBumpMap,
+      bumpScale: 0.022,
+      roughness: 0.86,
+      metalness: 0.12
+    });
+
+    const carbonCylinderGeo = new THREE.CylinderGeometry(0.452, 0.452, 3.04, 64, 1);
+    carbonCylinderGeo.rotateZ(Math.PI / 2);
+    const carbonCylinderMesh = new THREE.Mesh(carbonCylinderGeo, carbonCoreMat);
+    carbonCylinderMesh.castShadow = true;
+    carbonCylinderMesh.receiveShadow = true;
+    carbonCylinderMesh.userData.partKey = 'core';
+    coreGroup.add(carbonCylinderMesh);
+
+    // Geometri Pita Spiral Heliks 3D Mengilap (Laser-Trimmed Metal Film Track)
+    function createHelicalRibbonGeometry({
+      xStart = -1.36,
+      xEnd = 1.36,
+      turns = 7.2,
+      baseRadius = 0.453,
+      ribbonHalfWidth = 0.088,
+      ribbonHeight = 0.018,
+      steps = 460
+    }) {
+      // Profil penampang pita melengkung halus (8 titik tertutup di sekitar pusat pita)
+      const profPts = [
+        [-ribbonHalfWidth, 0.0],
+        [-ribbonHalfWidth * 0.78, ribbonHeight * 0.85],
+        [0.0, ribbonHeight],
+        [ribbonHalfWidth * 0.78, ribbonHeight * 0.85],
+        [ribbonHalfWidth, 0.0],
+        [ribbonHalfWidth * 0.8, -0.004],
+        [-ribbonHalfWidth * 0.8, -0.004]
+      ];
+      const P = profPts.length;
+      const positions = [];
+      const indices = [];
+
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const xCenter = xStart + (xEnd - xStart) * t;
+        const angle = t * turns * Math.PI * 2;
+        const cosA = Math.cos(angle);
+        const sinA = Math.sin(angle);
+
+        for (let p = 0; p < P; p++) {
+          const [dx, dr] = profPts[p];
+          const r = baseRadius + dr;
+          positions.push(xCenter + dx, r * cosA, r * sinA);
+        }
+      }
+
+      for (let i = 0; i < steps; i++) {
+        for (let p = 0; p < P; p++) {
+          const pNext = (p + 1) % P;
+          const a = i * P + p;
+          const b = (i + 1) * P + p;
+          const c = (i + 1) * P + pNext;
+          const d = i * P + pNext;
+
+          indices.push(a, b, d);
+          indices.push(b, c, d);
+        }
+      }
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geo.setIndex(indices);
+      geo.computeVertexNormals();
+      return geo;
+    }
+
+    const helixGeo = createHelicalRibbonGeometry({});
+    const helixMat = new THREE.MeshStandardMaterial({
+      color: '#d8d0ba',
+      metalness: 0.90,
+      roughness: 0.22
+    });
+    const helixMesh = new THREE.Mesh(helixGeo, helixMat);
+    helixMesh.castShadow = true;
+    helixMesh.receiveShadow = true;
+    helixMesh.userData.partKey = 'core';
+    coreGroup.add(helixMesh);
+
+    // -------------------------------------------------------------------------
+    // 4C. PENUTUP UJUNG (END CAP - BRUSHED STEEL)
+    // -------------------------------------------------------------------------
+    const brushedTex = createBrushedMetalTexture();
+    const endCapMat = new THREE.MeshStandardMaterial({
+      color: '#cbd5e1',
+      roughnessMap: brushedTex,
+      bumpMap: brushedTex,
+      bumpScale: 0.006,
+      metalness: 0.92,
+      roughness: 0.32
+    });
+
+    function createEndCapMesh(sideSign) {
+      // Profil LatheGeometry untuk tutup ujung logam berundak presisi
+      const pts = [
+        new THREE.Vector2(0.085, 0.0),
+        new THREE.Vector2(0.495, 0.0),
+        new THREE.Vector2(0.512, 0.03),
+        new THREE.Vector2(0.512, 0.23),
+        new THREE.Vector2(0.475, 0.25),
+        new THREE.Vector2(0.475, 0.31),
+        new THREE.Vector2(0.440, 0.34),
+        new THREE.Vector2(0.085, 0.34)
+      ];
+      const geo = new THREE.LatheGeometry(pts, 48);
+      // Orientasikan sepanjang sumbu X
+      geo.rotateZ(sideSign > 0 ? -Math.PI / 2 : Math.PI / 2);
+      const mesh = new THREE.Mesh(geo, endCapMat);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.userData.partKey = 'endcap';
+      return mesh;
+    }
+
+    const leftEndCap = createEndCapMesh(-1);
+    leftEndCap.position.x = -1.42;
+    heroGroup.add(leftEndCap);
+
+    const rightEndCap = createEndCapMesh(1);
+    rightEndCap.position.x = 1.42;
+    heroGroup.add(rightEndCap);
+
+    // -------------------------------------------------------------------------
+    // 4D. KAKI RESISTOR (TERMINAL KAWAT LOGAM BERUJUNG CHAMFER)
+    // -------------------------------------------------------------------------
+    const terminalMat = new THREE.MeshStandardMaterial({
+      color: '#e2e8f0',
+      roughnessMap: brushedTex,
+      metalness: 0.96,
+      roughness: 0.16
+    });
+
+    function createTerminalLeadMesh(sideSign) {
+      // Kawat logam dengan ujung chamfer realistis (x lokal dari 0 sampai 2.75)
+      const pts = [
+        new THREE.Vector2(0.0, 0.0),
+        new THREE.Vector2(0.084, 0.0),
+        new THREE.Vector2(0.084, 2.66),
+        new THREE.Vector2(0.056, 2.72),
+        new THREE.Vector2(0.0, 2.73)
+      ];
+      const geo = new THREE.LatheGeometry(pts, 32);
+      geo.rotateZ(sideSign > 0 ? -Math.PI / 2 : Math.PI / 2);
+      const mesh = new THREE.Mesh(geo, terminalMat);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.userData.partKey = 'terminal';
+      return mesh;
+    }
+
+    const leftTerminal = createTerminalLeadMesh(-1);
+    leftTerminal.position.x = -1.72;
+    heroGroup.add(leftTerminal);
+
+    const rightTerminal = createTerminalLeadMesh(1);
+    rightTerminal.position.x = 1.72;
+    heroGroup.add(rightTerminal);
+
+    // =========================================================================
+    // 5. LABEL ANOTASI 3D INTERAKTIF (PROYEKSI DUNIA -> LAYAR)
+    // =========================================================================
+    const annotationsConfig = [
+      {
+        key: 'coating',
+        label: 'Lapisan Luar (Cat Pelindung)',
+        color: '#d8b074',
+        getAnchor: () => {
+          const wp = new THREE.Vector3(-1.82, 0.70, 0.20);
+          return heroGroup.localToWorld(wp);
+        },
+        offset: { x: -55, y: -62 }
+      },
+      {
+        key: 'bands',
+        label: 'Gelang Warna (Kode Ω)',
+        color: '#ef4444',
+        getAnchor: () => {
+          const wp = new THREE.Vector3(-1.18, 0.68, 0.05);
+          wp.add(cutawayWindowMesh.position);
+          return heroGroup.localToWorld(wp);
+        },
+        offset: { x: -25, y: -68 }
+      },
+      {
+        key: 'core',
+        label: 'Bahan Resistif (Karbon / Film Metal)',
+        color: '#c084fc',
+        getAnchor: () => {
+          const wp = new THREE.Vector3(-0.08, 0.34, 0.28);
+          return heroGroup.localToWorld(wp);
+        },
+        offset: { x: 10, y: -74 }
+      },
+      {
+        key: 'endcap',
+        label: 'Penutup Ujung (End Cap)',
+        color: '#34d399',
+        getAnchor: () => {
+          const wp = new THREE.Vector3(rightEndCap.position.x + 0.16, 0.48, 0.12);
+          return heroGroup.localToWorld(wp);
+        },
+        offset: { x: 46, y: -56 }
+      },
+      {
+        key: 'terminal',
+        label: 'Kaki Resistor (Terminal)',
+        color: '#fb7185',
+        getAnchor: () => {
+          const wp = new THREE.Vector3(rightTerminal.position.x + 1.35, 0.08, 0.0);
+          return heroGroup.localToWorld(wp);
+        },
+        offset: { x: 35, y: -46 }
+      }
+    ];
+
+    const pinsContainer = document.getElementById('annotation-pins-container');
+    const linesSvg = document.getElementById('annotation-lines');
+    const annotationElements = [];
+
+    annotationsConfig.forEach((item) => {
+      // Buat elemen SVG line & dot
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('stroke', item.color);
+      line.setAttribute('stroke-width', '1.6');
+      line.setAttribute('stroke-dasharray', '3 3');
+      line.setAttribute('opacity', '0.85');
+      linesSvg.appendChild(line);
+
+      const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      dot.setAttribute('r', '4');
+      dot.setAttribute('fill', item.color);
+      dot.setAttribute('stroke', '#0f172a');
+      dot.setAttribute('stroke-width', '1.5');
+      linesSvg.appendChild(dot);
+
+      // Buat tombol pin HTML
+      const pin = document.createElement('div');
+      pin.className = 'annotation-pin';
+      pin.innerHTML = `
+        <div class="annotation-badge" data-key="${item.key}">
+          <span class="annotation-dot" style="background:${item.color}"></span>
+          <span>${item.label}</span>
+        </div>
+      `;
+      pin.addEventListener('click', (e) => {
+        e.stopPropagation();
+        selectAnatomyPart(item.key);
+      });
+      pinsContainer.appendChild(pin);
+
+      annotationElements.push({ config: item, line, dot, pin });
+    });
+
+    function updateAnnotationsProjection() {
+      const layer = document.getElementById('annotations-layer');
+      if (!state.labelsVisible) {
+        layer.style.display = 'none';
+        return;
+      }
+      layer.style.display = 'block';
+
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const isMobile = w < 640;
+
+      annotationElements.forEach(({ config, line, dot, pin }) => {
+        const anchor3D = config.getAnchor();
+        const projected = anchor3D.clone().project(camera);
+
+        if (projected.z > 1) {
+          pin.style.opacity = '0';
+          line.style.opacity = '0';
+          dot.style.opacity = '0';
+          return;
+        }
+
+        const sx = (projected.x * 0.5 + 0.5) * w;
+        const sy = (-projected.y * 0.5 + 0.5) * h;
+
+        const scaleOff = isMobile ? 0.65 : 1.0;
+        const bx = Math.max(85, Math.min(w - 85, sx + config.offset.x * scaleOff));
+        const by = Math.max(76, Math.min(h - 45, sy + config.offset.y * scaleOff));
+
+        pin.style.opacity = '1';
+        pin.style.left = `${bx}px`;
+        pin.style.top = `${by}px`;
+
+        line.style.opacity = '0.85';
+        line.setAttribute('x1', sx);
+        line.setAttribute('y1', sy);
+        line.setAttribute('x2', bx);
+        line.setAttribute('y2', by - 6);
+
+        dot.style.opacity = '1';
+        dot.setAttribute('cx', sx);
+        dot.setAttribute('cy', sy);
+
+        const badge = pin.querySelector('.annotation-badge');
+        if (state.selectedPart === config.key) {
+          badge.classList.add('active');
+        } else {
+          badge.classList.remove('active');
+        }
+      });
+    }
+
+    // =========================================================================
+    // 6. KALKULATOR GELANG WARNA & FORMATTER OHM
+    // =========================================================================
+    function formatResistanceValue(ohms) {
+      if (ohms >= 1e6) {
+        const v = ohms / 1e6;
+        return `${Number.isInteger(v) ? v : v.toFixed(2).replace(/\.?0+$/, '')} MΩ`;
+      }
+      if (ohms >= 1e3) {
+        const v = ohms / 1e3;
+        return `${Number.isInteger(v) ? v : v.toFixed(2).replace(/\.?0+$/, '')} kΩ`;
+      }
+      return `${Number.isInteger(ohms) ? ohms : ohms.toFixed(2).replace(/\.?0+$/, '')} Ω`;
+    }
+
+    function recalculateResistorBands() {
+      const d1 = BAND_DIGITS[state.band1];
+      const d2 = BAND_DIGITS[state.band2];
+      const mult = BAND_MULTIPLIERS[state.band3];
+      const tol = BAND_TOLERANCES[state.band4];
+
+      const baseDigits = d1.val * 10 + d2.val;
+      const ohms = baseDigits * mult.mult;
+      const formatted = formatResistanceValue(ohms);
+      const fullText = `${formatted} ${tol.label}`;
+
+      // Hitung rentang toleransi minimum dan maksimum
+      const minOhm = ohms * (1 - tol.tol / 100);
+      const maxOhm = ohms * (1 + tol.tol / 100);
+
+      document.getElementById('header-ohm-badge').textContent = fullText;
+      document.getElementById('calc-ohm-value').textContent = fullText;
+      document.getElementById('calc-ohm-range').textContent =
+        `Rentang Toleransi: ${formatResistanceValue(minOhm)} – ${formatResistanceValue(maxOhm)}`;
+
+      document.getElementById('b1-val-hint').textContent = d1.val;
+      document.getElementById('b2-val-hint').textContent = d2.val;
+      document.getElementById('b3-val-hint').textContent = mult.label;
+      document.getElementById('b4-val-hint').textContent = tol.label;
+
+      document.getElementById('preview-b1').style.backgroundColor = d1.hex;
+      document.getElementById('preview-b2').style.backgroundColor = d2.hex;
+      document.getElementById('preview-b3').style.backgroundColor = mult.hex;
+      document.getElementById('preview-b4').style.backgroundColor = tol.hex;
+
+      // Perbarui material solid 3D pada keempat gelang warna & tekstur bodi
+      sync3DBandMaterials();
+      updateResistorCoatTextures();
+    }
+
+    function initBandDropdowns() {
+      const sel1 = document.getElementById('select-band1');
+      const sel2 = document.getElementById('select-band2');
+      const sel3 = document.getElementById('select-band3');
+      const sel4 = document.getElementById('select-band4');
+
+      // Gelang 1 (1-9, tanpa hitam di posisi pertama standar)
+      BAND_DIGITS.forEach((item, idx) => {
+        if (idx === 0) return;
+        const opt = document.createElement('option');
+        opt.value = idx;
+        opt.textContent = `${item.name} (${item.val})`;
+        sel1.appendChild(opt);
+      });
+
+      BAND_DIGITS.forEach((item, idx) => {
+        const opt = document.createElement('option');
+        opt.value = idx;
+        opt.textContent = `${item.name} (${item.val})`;
+        sel2.appendChild(opt);
+      });
+
+      BAND_MULTIPLIERS.forEach((item, idx) => {
+        const opt = document.createElement('option');
+        opt.value = idx;
+        opt.textContent = item.name;
+        sel3.appendChild(opt);
+      });
+
+      BAND_TOLERANCES.forEach((item, idx) => {
+        const opt = document.createElement('option');
+        opt.value = idx;
+        opt.textContent = item.name;
+        sel4.appendChild(opt);
+      });
+
+      sel1.value = state.band1;
+      sel2.value = state.band2;
+      sel3.value = state.band3;
+      sel4.value = state.band4;
+
+      sel1.addEventListener('change', (e) => { state.band1 = Number(e.target.value); recalculateResistorBands(); });
+      sel2.addEventListener('change', (e) => { state.band2 = Number(e.target.value); recalculateResistorBands(); });
+      sel3.addEventListener('change', (e) => { state.band3 = Number(e.target.value); recalculateResistorBands(); });
+      sel4.addEventListener('change', (e) => { state.band4 = Number(e.target.value); recalculateResistorBands(); });
+    }
+
+    // =========================================================================
+    // 7. TAMBAH OBJEK KOMPONEN ELEKTRONIK 3D DI SEKITAR RESISTOR UTAMA
+    // =========================================================================
+    const extraObjectsGroup = new THREE.Group();
+    scene.add(extraObjectsGroup);
+
+    // Ring seleksi cyan pada meja kerja untuk objek tambahan terpilih
+    const selectionRingGeo = new THREE.RingGeometry(0.62, 0.72, 48);
+    const selectionRingMat = new THREE.MeshBasicMaterial({
+      color: '#38bdf8',
+      transparent: true,
+      opacity: 0.75,
+      side: THREE.DoubleSide
+    });
+    const selectionRingMesh = new THREE.Mesh(selectionRingGeo, selectionRingMat);
+    selectionRingMesh.rotation.x = -Math.PI / 2;
+    selectionRingMesh.position.y = 0.008;
+    selectionRingMesh.visible = false;
+    scene.add(selectionRingMesh);
+
+    // Slot koordinat otomatis agar objek baru tidak saling menumpuk
+    const SPAWN_SLOTS = [
+      { x: -3.2, z: 2.3 },
+      { x: 3.2,  z: 2.3 },
+      { x: -3.4, z: -2.1 },
+      { x: 3.4,  z: -2.1 },
+      { x: 0.0,  z: 2.85 },
+      { x: 0.0,  z: -2.85 },
+      { x: -4.9, z: 0.3 },
+      { x: 4.9,  z: 0.3 }
+    ];
+
+    function buildExtraComponentMesh(type, index) {
+      const group = new THREE.Group();
+
+      if (type === 'resistor') {
+        // Resistor Aksial Ekstra (dengan variasi nilai standar)
+        const presets = [
+          { b1: 1, b2: 0, b3: 3, label: '10kΩ' }, // Cokelat-Hitam-Oranye
+          { b1: 4, b2: 7, b3: 2, label: '4.7kΩ' }, // Kuning-Ungu-Merah
+          { b1: 3, b2: 3, b3: 1, label: '330Ω' }  // Oranye-Oranye-Cokelat
+        ];
+        const p = presets[index % presets.length];
+
+        const body = new THREE.Mesh(
+          new THREE.CapsuleGeometry(0.24, 0.95, 12, 24),
+          new THREE.MeshPhysicalMaterial({
+            color: '#d6ac6e',
+            roughness: 0.25,
+            clearcoat: 0.8
+          })
+        );
+        body.rotation.z = Math.PI / 2;
+        body.position.y = 0.26;
+        body.castShadow = true;
+        body.receiveShadow = true;
+        group.add(body);
+
+        // Gelang warna mini
+        const bandHexes = [
+          BAND_DIGITS[p.b1].hex,
+          BAND_DIGITS[p.b2].hex,
+          BAND_MULTIPLIERS[p.b3].hex,
+          '#e2b13c'
+        ];
+        const bandXs = [-0.34, -0.14, 0.06, 0.32];
+        bandHexes.forEach((hex, bi) => {
+          const ring = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.243, 0.243, 0.08, 24),
+            new THREE.MeshStandardMaterial({ color: hex, roughness: 0.3, metalness: bi === 3 ? 0.8 : 0.05 })
+          );
+          ring.rotation.z = Math.PI / 2;
+          ring.position.set(bandXs[bi], 0.26, 0);
+          group.add(ring);
+        });
+
+        // Kaki kawat tertekuk 90° rapi di atas meja
+        [-1, 1].forEach((s) => {
+          const horiz = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.45, 12), terminalMat);
+          horiz.rotation.z = Math.PI / 2;
+          horiz.position.set(s * 0.78, 0.26, 0);
+          horiz.castShadow = true;
+          group.add(horiz);
+
+          const vert = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.26, 12), terminalMat);
+          vert.position.set(s * 0.99, 0.13, 0);
+          vert.castShadow = true;
+          group.add(vert);
+        });
+
+        group.userData.displayName = `Resistor Ekstra (${p.label})`;
+      } else if (type === 'capacitor') {
+        // Kapasitor Elektrolit Radial Realistis
+        const sleeveMat = new THREE.MeshPhysicalMaterial({
+          color: '#172554',
+          roughness: 0.26,
+          metalness: 0.1,
+          clearcoat: 0.75
+        });
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 1.15, 36), sleeveMat);
+        body.position.y = 0.78;
+        body.castShadow = true;
+        body.receiveShadow = true;
+        group.add(body);
+
+        // Strip polaritas negatif perak di sisi kanan
+        const stripe = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.423, 0.423, 1.12, 36, 1, true, 0.2, 0.45),
+          new THREE.MeshStandardMaterial({ color: '#cbd5e1', roughness: 0.35, metalness: 0.4 })
+        );
+        stripe.position.y = 0.78;
+        group.add(stripe);
+
+        // Tutup aluminium atas dengan alur ventilasi
+        const topCap = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.39, 0.41, 0.04, 32),
+          new THREE.MeshStandardMaterial({ color: '#e2e8f0', metalness: 0.92, roughness: 0.2 })
+        );
+        topCap.position.y = 1.36;
+        group.add(topCap);
+
+        // Dua kaki kawat radial
+        [-0.15, 0.15].forEach((lx, idx) => {
+          const len = idx === 0 ? 0.32 : 0.26;
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, len, 12), terminalMat);
+          leg.position.set(lx, len / 2, 0);
+          leg.castShadow = true;
+          group.add(leg);
+        });
+
+        group.userData.displayName = 'Kapasitor Elektrolit (100µF)';
+      } else if (type === 'led') {
+        // LED 5mm Menyala Realistis (Merah / Hijau) dengan Cahaya Lokal
+        const ledColors = [
+          { name: 'Merah', hex: '#ef4444', emissive: '#dc2626' },
+          { name: 'Hijau', hex: '#22c55e', emissive: '#16a34a' }
+        ];
+        const c = ledColors[index % ledColors.length];
+
+        const domeMat = new THREE.MeshPhysicalMaterial({
+          color: c.hex,
+          emissive: c.emissive,
+          emissiveIntensity: 1.4,
+          transmission: 0.55,
+          transparent: true,
+          opacity: 0.92,
+          roughness: 0.12,
+          ior: 1.5
+        });
+
+        // Rim bawah LED
+        const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.12, 28), domeMat);
+        rim.position.y = 0.42;
+        group.add(rim);
+
+        // Badan & kubah LED
+        const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.55, 28), domeMat);
+        cyl.position.y = 0.72;
+        cyl.castShadow = true;
+        group.add(cyl);
+
+        const sphere = new THREE.Mesh(new THREE.SphereGeometry(0.24, 28, 16, 0, Math.PI * 2, 0, Math.PI / 2), domeMat);
+        sphere.position.y = 0.995;
+        group.add(sphere);
+
+        // Die pemancar cahaya terang di dalam LED
+        const die = new THREE.Mesh(
+          new THREE.SphereGeometry(0.08, 16, 16),
+          new THREE.MeshBasicMaterial({ color: '#ffffff' })
+        );
+        die.position.y = 0.76;
+        group.add(die);
+
+        // Lampu titik halus menerangi permukaan meja sekitar LED
+        const glowLight = new THREE.PointLight(c.hex, 1.4, 3.2, 1.8);
+        glowLight.position.set(0, 0.85, 0);
+        group.add(glowLight);
+
+        // Kaki Anoda & Katoda
+        [-0.09, 0.09].forEach((lx) => {
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.38, 12), terminalMat);
+          leg.position.set(lx, 0.19, 0);
+          leg.castShadow = true;
+          group.add(leg);
+        });
+
+        group.userData.displayName = `LED Menyala (${c.name})`;
+      } else if (type === 'diode') {
+        // Dioda Penyearah Silikon Aksial (1N4007) — Bodi Hitam Solid + Gelang Katoda Perak
+        const body = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.24, 0.24, 1.15, 32),
+          new THREE.MeshStandardMaterial({
+            color: '#18181b',
+            roughness: 0.35,
+            metalness: 0.08,
+            transparent: false,
+            opacity: 1.0
+          })
+        );
+        body.rotation.z = Math.PI / 2;
+        body.position.y = 0.26;
+        body.castShadow = true;
+        body.receiveShadow = true;
+        group.add(body);
+
+        // Gelang Katoda Perak Solid di sisi kanan dioda
+        const cathodeBand = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.245, 0.245, 0.16, 32),
+          new THREE.MeshStandardMaterial({
+            color: '#e2e8f0',
+            metalness: 0.85,
+            roughness: 0.24,
+            transparent: false,
+            opacity: 1.0
+          })
+        );
+        cathodeBand.rotation.z = Math.PI / 2;
+        cathodeBand.position.set(0.36, 0.26, 0);
+        group.add(cathodeBand);
+
+        // Dua kaki kawat aksial tertekuk rapi ke meja kerja
+        [-1, 1].forEach((s) => {
+          const horiz = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.45, 12), terminalMat);
+          horiz.rotation.z = Math.PI / 2;
+          horiz.position.set(s * 0.78, 0.26, 0);
+          horiz.castShadow = true;
+          group.add(horiz);
+
+          const vert = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.26, 12), terminalMat);
+          vert.position.set(s * 0.99, 0.13, 0);
+          vert.castShadow = true;
+          group.add(vert);
+        });
+
+        group.userData.displayName = 'Dioda Silikon (1N4007)';
+      }
+
+      return group;
+    }
+
+    function spawnExtraObject(type) {
+      const idx = state.extraCounter++;
+      const mesh = buildExtraComponentMesh(type, idx);
+      const slot = SPAWN_SLOTS[state.extraObjects.length % SPAWN_SLOTS.length];
+      // Sedikit variasi agar tidak menumpuk jika lebih dari 8 objek
+      const ringOffset = Math.floor(state.extraObjects.length / SPAWN_SLOTS.length) * 0.95;
+      const posX = slot.x + (slot.x >= 0 ? ringOffset : -ringOffset);
+      const posZ = slot.z;
+
+      mesh.position.set(posX, 0, posZ);
+      const id = `extra-${idx}`;
+      mesh.userData.extraId = id;
+      mesh.traverse((child) => {
+        if (child.isMesh) child.userData.extraId = id;
+      });
+
+      extraObjectsGroup.add(mesh);
+      state.extraObjects.push({
+        id,
+        name: `${mesh.userData.displayName} #${idx + 1}`,
+        mesh
+      });
+
+      selectExtraObject(id);
+      refreshExtraObjectsUI();
+      showToast(`${mesh.userData.displayName} ditambahkan ke meja kerja.`);
+    }
+
+    function selectExtraObject(id) {
+      state.selectedExtraId = id;
+      const item = state.extraObjects.find((o) => o.id === id);
+      const panel = document.getElementById('selected-object-panel');
+
+      if (!item) {
+        selectionRingMesh.visible = false;
+        panel.classList.add('hidden');
+        return;
+      }
+
+      panel.classList.remove('hidden');
+      selectionRingMesh.visible = true;
+      selectionRingMesh.position.set(item.mesh.position.x, 0.008, item.mesh.position.z);
+
+      document.getElementById('select-extra-object').value = id;
+      document.getElementById('slider-obj-x').value = item.mesh.position.x.toFixed(1);
+      document.getElementById('obj-pos-x-val').textContent = item.mesh.position.x.toFixed(1);
+      document.getElementById('slider-obj-z').value = item.mesh.position.z.toFixed(1);
+      document.getElementById('obj-pos-z-val').textContent = item.mesh.position.z.toFixed(1);
+
+      const deg = Math.round(THREE.MathUtils.radToDeg(item.mesh.rotation.y) % 360);
+      document.getElementById('slider-obj-rot').value = deg < 0 ? deg + 360 : deg;
+      document.getElementById('obj-rot-y-val').textContent = `${deg < 0 ? deg + 360 : deg}°`;
+    }
+
+    function refreshExtraObjectsUI() {
+      document.getElementById('extra-count-badge').textContent = `${state.extraObjects.length} Objek`;
+      const sel = document.getElementById('select-extra-object');
+      sel.innerHTML = '';
+      state.extraObjects.forEach((obj) => {
+        const opt = document.createElement('option');
+        opt.value = obj.id;
+        opt.textContent = obj.name;
+        sel.appendChild(opt);
+      });
+      if (state.selectedExtraId) {
+        sel.value = state.selectedExtraId;
+      }
+    }
+
+    function removeSelectedExtraObject() {
+      if (!state.selectedExtraId) return;
+      const idx = state.extraObjects.findIndex((o) => o.id === state.selectedExtraId);
+      if (idx === -1) return;
+
+      const [removed] = state.extraObjects.splice(idx, 1);
+      extraObjectsGroup.remove(removed.mesh);
+
+      const nextObj = state.extraObjects[state.extraObjects.length - 1] || null;
+      selectExtraObject(nextObj ? nextObj.id : null);
+      refreshExtraObjectsUI();
+      showToast(`${removed.name} dihapus.`);
+    }
+
+    function clearAllExtraObjects(silent = false) {
+      while (extraObjectsGroup.children.length > 0) {
+        extraObjectsGroup.remove(extraObjectsGroup.children[0]);
+      }
+      state.extraObjects = [];
+      state.selectedExtraId = null;
+      selectionRingMesh.visible = false;
+      document.getElementById('selected-object-panel').classList.add('hidden');
+      refreshExtraObjectsUI();
+      if (!silent) showToast('Semua objek tambahan dibersihkan.');
+    }
+
+    // =========================================================================
+    // 8. ANIMASI PEMECAHAN RESISTOR, INSPEKSI ANATOMI & KAMERA HALUS
+    // =========================================================================
+    function setExplodeTarget(val01) {
+      state.explodeTarget = Math.max(0, Math.min(1, val01));
+      const pct = Math.round(state.explodeTarget * 100);
+      document.getElementById('slider-explode').value = pct;
+      document.getElementById('explode-percent-label').textContent = `${pct}%`;
+
+      const quickLabel = document.getElementById('btn-quick-explode-label');
+      quickLabel.textContent = state.explodeTarget > 0.5 ? 'Satukan Kembali' : 'Pecahkan Resistor';
+    }
+
+    function updateExplodeKinematics(dt) {
+      // Interpolasi eksponensial mulus
+      const lerpFactor = 1 - Math.exp(-8.5 * dt);
+      state.explodeCurrent += (state.explodeTarget - state.explodeCurrent) * lerpFactor;
+      if (Math.abs(state.explodeTarget - state.explodeCurrent) < 0.0005) {
+        state.explodeCurrent = state.explodeTarget;
+      }
+
+      const t = state.explodeCurrent;
+      // Kurva ease-out kubik untuk gerakan mekanis elegan
+      const ease = 1 - Math.pow(1 - t, 3);
+
+      // 1. Potongan jendela cangkang depan-atas terangkat & terbuka untuk menampakkan inti spiral
+      cutawayWindowMesh.position.set(0, 1.18 * ease, 0.62 * ease);
+      cutawayWindowMesh.rotation.x = -0.22 * ease;
+
+      // 2. Dudukan cangkang bawah sedikit turun agar rongga dalam terlihat jelas
+      mainShellGroup.position.set(0, -0.06 * ease, 0);
+
+      // 3. Penutup ujung (end cap) sedikit bergeser aksial ke luar
+      leftEndCap.position.x = -1.42 - 0.24 * ease;
+      rightEndCap.position.x = 1.42 + 0.24 * ease;
+
+      // 4. Kaki terminal ikut bergeser sedikit selaras dengan end cap
+      leftTerminal.position.x = -1.72 - 0.36 * ease;
+      rightTerminal.position.x = 1.72 + 0.36 * ease;
+    }
+
+    // Transisi kamera halus ke preset sudut pandang
+    function animateCameraTo(pos, target, duration = 0.9) {
+      state.cameraAnim = {
+        startPos: camera.position.clone(),
+        endPos: pos.clone(),
+        startTarget: controls.target.clone(),
+        endTarget: target.clone(),
+        elapsed: 0,
+        duration
+      };
+    }
+
+    function selectAnatomyPart(key) {
+      state.selectedPart = key;
+      const info = ANATOMY_INFO[key];
+      if (!info) return;
+
+      // Jika memilih bagian dalam (Bahan Resistif / Penutup Ujung) saat tertutup, buka cangkang otomatis!
+      if ((key === 'core' || key === 'endcap') && state.explodeTarget < 0.75) {
+        setExplodeTarget(1.0);
+      }
+
+      document.getElementById('part-info-dot').style.backgroundColor = info.dotColor;
+      document.getElementById('part-info-title').textContent = info.title;
+      document.getElementById('part-info-desc').textContent = info.desc;
+      document.getElementById('part-info-material').textContent = info.material;
+      document.getElementById('part-info-card').classList.remove('hidden');
+    }
+
+    // =========================================================================
+    // 9. CINEMATIC TOUR (4 TAHAP TERKOREOGRAFI & SUBTITLE OTOMATIS)
+    // =========================================================================
+    const TOUR_STAGES = [
+      {
+        end: 6.0,
+        tag: 'TAHAP 1/4',
+        title: 'Bentuk Fisik & Kode Warna',
+        subtitle: 'Mengamati bentuk fisik resistor aksial dengan lapisan cat pelindung mengilap dan 4 gelang warna standar.'
+      },
+      {
+        end: 13.5,
+        tag: 'TAHAP 2/4',
+        title: 'Pembedahan & Lilitan Film Metal',
+        subtitle: 'Lapisan luar terbelah terbuka — menampakkan inti karbon berbintik dan alur spiral film logam presisi.'
+      },
+      {
+        end: 19.0,
+        tag: 'TAHAP 3/4',
+        title: 'Penutup Ujung (End Cap) & Terminal',
+        subtitle: 'Menyusuri penutup ujung baja sikat dan kaki terminal konduktor berlapis timah pada kedua sisi resistor.'
+      },
+      {
+        end: 24.0,
+        tag: 'TAHAP 4/4',
+        title: 'Kembali ke Sudut Hero Studio',
+        subtitle: 'Menarik kamera kembali ke sudut utama dan menyatukan kembali lapisan pelindung resistor secara presisi.'
+      }
+    ];
+
+    function startOrResumeCinematicTour() {
+      if (state.tourState === 'idle') {
+        state.tourTime = 0;
+        setExplodeTarget(0);
+      }
+      state.cameraAnim = null;
+      state.autoRotate = false;
+      updateAutoRotateButton();
+      state.tourState = 'playing';
+      updateTourUI();
+    }
+
+    function pauseCinematicTour(byUserInteraction = false) {
+      if (state.tourState !== 'playing') return;
+      state.tourState = 'paused';
+      updateTourUI();
+      if (byUserInteraction) {
+        showToast('Cinematic Tour dijeda (kontrol kamera manual aktif).');
+      }
+    }
+
+    function stopCinematicTour(resetView = false) {
+      state.tourState = 'idle';
+      state.tourTime = 0;
+      document.getElementById('tour-subtitle-box').classList.add('hidden');
+      updateTourUI();
+      if (resetView) {
+        setExplodeTarget(0);
+        animateCameraTo(INITIAL_CAM_POS, INITIAL_CAM_TARGET, 0.85);
+      }
+    }
+
+    function updateTourUI() {
+      const playText = document.getElementById('tour-play-text');
+      const statusBadge = document.getElementById('tour-status-badge');
+      const progressBar = document.getElementById('tour-progress-bar');
+
+      const pct = Math.min(100, (state.tourTime / state.tourDuration) * 100);
+      progressBar.style.width = `${pct}%`;
+
+      if (state.tourState === 'playing') {
+        playText.textContent = 'Jeda Tur';
+        statusBadge.textContent = 'Berjalan';
+        statusBadge.className = 'text-[10px] font-medium px-2 py-0.5 rounded-full bg-sky-500/25 text-sky-300 border border-sky-400/35';
+      } else if (state.tourState === 'paused') {
+        playText.textContent = 'Lanjutkan Tur';
+        statusBadge.textContent = 'Dijeda';
+        statusBadge.className = 'text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-500/25 text-amber-300 border border-amber-400/35';
+      } else {
+        playText.textContent = 'Mulai Tur';
+        statusBadge.textContent = 'Siap';
+        statusBadge.className = 'text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-white/10';
+      }
+    }
+
+    function stepCinematicTour(dt) {
+      if (state.tourState !== 'playing') return;
+
+      state.tourTime += dt;
+      const t = state.tourTime;
+      const subBox = document.getElementById('tour-subtitle-box');
+      subBox.classList.remove('hidden');
+
+      // Tentukan tahap aktif & perbarui subtitle
+      const stage = TOUR_STAGES.find((s) => t <= s.end) || TOUR_STAGES[3];
+      document.getElementById('tour-stage-tag').textContent = stage.tag;
+      document.getElementById('tour-stage-title').textContent = stage.title;
+      document.getElementById('tour-subtitle-text').textContent = stage.subtitle;
+
+      if (t <= 6.0) {
+        // Tahap 1: Orbit mengelilingi resistor utuh (0%)
+        setExplodeTarget(0);
+        const u = t / 6.0;
+        const angle = -0.35 + u * 1.15;
+        const radius = 7.4 - Math.sin(u * Math.PI) * 0.6;
+        camera.position.set(
+          Math.sin(angle) * radius,
+          2.2 + Math.sin(u * Math.PI) * 0.45,
+          Math.cos(angle) * radius
+        );
+        controls.target.set(0, 1.15, 0);
+      } else if (t <= 13.5) {
+        // Tahap 2: Pecahkan cangkang & zoom makro ke lilitan spiral film logam
+        const u = (t - 6.0) / 7.5;
+        const smoothU = u * u * (3 - 2 * u);
+        setExplodeTarget(Math.min(1, u * 1.6));
+
+        const camX = THREE.MathUtils.lerp(4.2, -0.35, smoothU);
+        const camY = THREE.MathUtils.lerp(2.3, 1.62, smoothU);
+        const camZ = THREE.MathUtils.lerp(5.8, 3.05, smoothU);
+        camera.position.set(camX, camY, camZ);
+        controls.target.set(THREE.MathUtils.lerp(0, -0.1, smoothU), 1.15, 0);
+      } else if (t <= 19.0) {
+        // Tahap 3: Menyusuri End Cap kanan & kaki terminal kawat dengan label aktif
+        const u = (t - 13.5) / 5.5;
+        const smoothU = u * u * (3 - 2 * u);
+        setExplodeTarget(1.0);
+        if (!state.labelsVisible) {
+          state.labelsVisible = true;
+          document.getElementById('btn-labels-text').textContent = 'Label: ON';
+        }
+
+        camera.position.set(
+          THREE.MathUtils.lerp(-0.35, 3.35, smoothU),
+          THREE.MathUtils.lerp(1.62, 1.88, smoothU),
+          THREE.MathUtils.lerp(3.05, 4.15, smoothU)
+        );
+        controls.target.set(THREE.MathUtils.lerp(-0.1, 1.85, smoothU), 1.15, 0);
+      } else if (t <= 24.0) {
+        // Tahap 4: Menarik kamera kembali ke sudut hero & menutup kembali cangkang
+        const u = (t - 19.0) / 5.0;
+        const smoothU = u * u * (3 - 2 * u);
+        setExplodeTarget(Math.max(0, 1 - u * 1.35));
+
+        camera.position.lerpVectors(new THREE.Vector3(3.35, 1.88, 4.15), INITIAL_CAM_POS, smoothU);
+        controls.target.lerpVectors(new THREE.Vector3(1.85, 1.15, 0), INITIAL_CAM_TARGET, smoothU);
+      } else {
+        // Tur selesai dengan mulus
+        setExplodeTarget(0);
+        camera.position.copy(INITIAL_CAM_POS);
+        controls.target.copy(INITIAL_CAM_TARGET);
+        stopCinematicTour(false);
+        showToast('Cinematic Tour selesai.');
+      }
+
+      controls.update();
+      updateTourUI();
+    }
+
+    // =========================================================================
+    // 10. INTERAKSI RAYCASTING, SCREENSHOT PNG, RESET & EVENT LISTENER UI
+    // =========================================================================
+    const raycaster = new THREE.Raycaster();
+    const pointerDownPos = new THREE.Vector2();
+    const pointerUpPos = new THREE.Vector2();
+
+    renderer.domElement.addEventListener('pointerdown', (e) => {
+      pointerDownPos.set(e.clientX, e.clientY);
+    });
+
+    renderer.domElement.addEventListener('pointerup', (e) => {
+      pointerUpPos.set(e.clientX, e.clientY);
+      // Hanya anggap sebagai klik jika bukan drag kamera (< 6px)
+      if (pointerDownPos.distanceTo(pointerUpPos) > 6) return;
+
+      const rect = renderer.domElement.getBoundingClientRect();
+      const ndc = new THREE.Vector2(
+        ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        -((e.clientY - rect.top) / rect.height) * 2 + 1
+      );
+      raycaster.setFromCamera(ndc, camera);
+
+      // Cek klik pada bagian Hero Resistor atau Objek Tambahan
+      const targets = [...heroGroup.children, ...extraObjectsGroup.children];
+      const hits = raycaster.intersectObjects(targets, true);
+      if (hits.length > 0) {
+        const hitObj = hits[0].object;
+        if (hitObj.userData.partKey) {
+          selectAnatomyPart(hitObj.userData.partKey);
+        } else if (hitObj.userData.extraId) {
+          selectExtraObject(hitObj.userData.extraId);
+          switchControlTab('tab-objek');
+        }
+      }
+    });
+
+    // Notifikasi Toast
+    function showToast(message) {
+      const tc = document.getElementById('toast-container');
+      const el = document.createElement('div');
+      el.className = 'glass-pill px-4 py-2 rounded-full text-xs font-medium text-slate-100 border border-white/15 shadow-xl transition-all duration-300 opacity-0 -translate-y-2';
+      el.textContent = message;
+      tc.appendChild(el);
+
+      requestAnimationFrame(() => {
+        el.classList.remove('opacity-0', '-translate-y-2');
+      });
+
+      setTimeout(() => {
+        el.classList.add('opacity-0', '-translate-y-2');
+        setTimeout(() => el.remove(), 300);
+      }, 2400);
+    }
+
+    // Screenshot PNG Resolusi Tinggi (Tanpa UI Menutupi Objek)
+    function captureHighResScreenshot() {
+      // Sembunyikan ring seleksi sementara agar hasil tangkapan murni estetis
+      const prevRingVisible = selectionRingMesh.visible;
+      selectionRingMesh.visible = false;
+
+      // Render frame terbaru secara eksplisit sebelum membaca buffer kanvas
+      renderer.render(scene, camera);
+      const dataURL = renderer.domElement.toDataURL('image/png');
+
+      selectionRingMesh.visible = prevRingVisible;
+
+      // Efek kilat kamera
+      const flash = document.getElementById('camera-flash');
+      flash.style.opacity = '0.85';
+      setTimeout(() => {
+        flash.style.opacity = '0';
+      }, 70);
+
+      // Unduh file PNG
+      const link = document.createElement('a');
+      const ohmSlug = document.getElementById('header-ohm-badge').textContent.replace(/[^a-zA-Z0-9]/g, '_');
+      link.download = `resistor-3d-${ohmSlug}.png`;
+      link.href = dataURL;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      showToast('Screenshot PNG resolusi tinggi berhasil disimpan!');
+    }
+
+    // Reset Lengkap Semua State ke Awal
+    function resetEverything() {
+      stopCinematicTour(false);
+      state.autoRotate = false;
+      updateAutoRotateButton();
+
+      setExplodeTarget(0);
+      clearAllExtraObjects(true);
+
+      state.band1 = 2;
+      state.band2 = 2;
+      state.band3 = 0;
+      state.band4 = 5;
+      document.getElementById('select-band1').value = 2;
+      document.getElementById('select-band2').value = 2;
+      document.getElementById('select-band3').value = 0;
+      document.getElementById('select-band4').value = 5;
+      recalculateResistorBands();
+
+      state.selectedPart = null;
+      document.getElementById('part-info-card').classList.add('hidden');
+
+      state.labelsVisible = true;
+      document.getElementById('btn-labels-text').textContent = 'Label: ON';
+
+      animateCameraTo(INITIAL_CAM_POS, INITIAL_CAM_TARGET, 0.85);
+      showToast('Tampilan, struktur, dan konfigurasi telah di-reset.');
+    }
+
+    // Navigasi Tab Panel Kontrol
+    function switchControlTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach((btn) => {
+        const active = btn.dataset.tab === tabId;
+        btn.className = active
+          ? 'tab-btn active py-2 px-1.5 rounded-xl text-[11px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-400/30 transition'
+          : 'tab-btn py-2 px-1.5 rounded-xl text-[11px] font-semibold text-slate-400 hover:text-white transition';
+      });
+      document.querySelectorAll('.tab-content').forEach((pane) => {
+        pane.classList.toggle('hidden', pane.id !== tabId);
+      });
+    }
+
+    document.querySelectorAll('.tab-btn').forEach((btn) => {
+      btn.addEventListener('click', () => switchControlTab(btn.dataset.tab));
+    });
+
+    // Kontrol Pemecahan Resistor
+    document.getElementById('slider-explode').addEventListener('input', (e) => {
+      if (state.tourState === 'playing') pauseCinematicTour(true);
+      setExplodeTarget(Number(e.target.value) / 100);
+    });
+
+    document.getElementById('btn-explode-open').addEventListener('click', () => {
+      if (state.tourState === 'playing') pauseCinematicTour(true);
+      setExplodeTarget(1.0);
+    });
+
+    document.getElementById('btn-explode-close').addEventListener('click', () => {
+      if (state.tourState === 'playing') pauseCinematicTour(true);
+      setExplodeTarget(0.0);
+    });
+
+    document.getElementById('btn-quick-explode').addEventListener('click', () => {
+      if (state.tourState === 'playing') pauseCinematicTour(true);
+      setExplodeTarget(state.explodeTarget > 0.5 ? 0.0 : 1.0);
+    });
+
+    document.getElementById('btn-part-toggle-explode').addEventListener('click', () => {
+      setExplodeTarget(state.explodeTarget > 0.5 ? 0.0 : 1.0);
+    });
+
+    // Tombol Inspeksi Bagian di Tab Struktur
+    document.querySelectorAll('.inspect-part-btn').forEach((btn) => {
+      btn.addEventListener('click', () => selectAnatomyPart(btn.dataset.part));
+    });
+
+    document.getElementById('btn-close-part-info').addEventListener('click', () => {
+      state.selectedPart = null;
+      document.getElementById('part-info-card').classList.add('hidden');
+    });
+
+    // Kontrol Cinematic Tour
+    document.getElementById('btn-tour-play').addEventListener('click', () => {
+      if (state.tourState === 'playing') {
+        pauseCinematicTour(false);
+      } else {
+        startOrResumeCinematicTour();
+      }
+    });
+
+    document.getElementById('btn-tour-stop').addEventListener('click', () => {
+      stopCinematicTour(true);
+    });
+
+    // Kontrol Kamera (Preset, D-Pad Orbit, Zoom, Auto-Rotasi)
+    function updateAutoRotateButton() {
+      controls.autoRotate = state.autoRotate;
+      controls.autoRotateSpeed = 1.8;
+      const btn = document.getElementById('btn-autorotate');
+      btn.textContent = `Auto-Rotasi: ${state.autoRotate ? 'ON' : 'OFF'}`;
+      btn.className = state.autoRotate
+        ? 'btn-studio px-2.5 py-1 text-[11px] bg-amber-500/25 text-amber-300 border border-amber-400/40'
+        : 'btn-studio px-2.5 py-1 text-[11px] bg-white/10 hover:bg-white/15 text-slate-300 border border-white/10';
+    }
+
+    document.getElementById('btn-autorotate').addEventListener('click', () => {
+      if (state.tourState === 'playing') pauseCinematicTour(true);
+      state.autoRotate = !state.autoRotate;
+      updateAutoRotateButton();
+    });
+
+    function orbitCameraBy(dTheta, dPhi) {
+      if (state.tourState === 'playing') pauseCinematicTour(true);
+      state.cameraAnim = null;
+      const offset = camera.position.clone().sub(controls.target);
+      const spherical = new THREE.Spherical().setFromVector3(offset);
+      spherical.theta += dTheta;
+      spherical.phi = Math.max(0.18, Math.min(Math.PI * 0.48, spherical.phi + dPhi));
+      offset.setFromSpherical(spherical);
+      camera.position.copy(controls.target).add(offset);
+      controls.update();
+    }
+
+    function zoomCameraBy(factor) {
+      if (state.tourState === 'playing') pauseCinematicTour(true);
+      state.cameraAnim = null;
+      const offset = camera.position.clone().sub(controls.target);
+      const newLen = Math.max(controls.minDistance, Math.min(controls.maxDistance, offset.length() * factor));
+      offset.setLength(newLen);
+      camera.position.copy(controls.target).add(offset);
+      controls.update();
+    }
+
+    document.getElementById('cam-left').addEventListener('click', () => orbitCameraBy(-0.28, 0));
+    document.getElementById('cam-right').addEventListener('click', () => orbitCameraBy(0.28, 0));
+    document.getElementById('cam-up').addEventListener('click', () => orbitCameraBy(0, -0.22));
+    document.getElementById('cam-down').addEventListener('click', () => orbitCameraBy(0, 0.22));
+    document.getElementById('cam-center').addEventListener('click', () => animateCameraTo(INITIAL_CAM_POS, INITIAL_CAM_TARGET, 0.7));
+    document.getElementById('cam-zoom-in').addEventListener('click', () => zoomCameraBy(0.82));
+    document.getElementById('cam-zoom-out').addEventListener('click', () => zoomCameraBy(1.22));
+
+    document.getElementById('preset-front').addEventListener('click', () => {
+      if (state.tourState === 'playing') pauseCinematicTour(true);
+      animateCameraTo(new THREE.Vector3(0, 1.35, 7.3), INITIAL_CAM_TARGET, 0.85);
+    });
+
+    document.getElementById('preset-macro').addEventListener('click', () => {
+      if (state.tourState === 'playing') pauseCinematicTour(true);
+      if (state.explodeTarget < 0.8) setExplodeTarget(1.0);
+      animateCameraTo(new THREE.Vector3(-0.2, 1.55, 2.85), new THREE.Vector3(-0.1, 1.15, 0), 0.9);
+    });
+
+    document.getElementById('preset-iso').addEventListener('click', () => {
+      if (state.tourState === 'playing') pauseCinematicTour(true);
+      animateCameraTo(new THREE.Vector3(4.6, 3.6, 5.4), INITIAL_CAM_TARGET, 0.85);
+    });
+
+    document.getElementById('preset-side').addEventListener('click', () => {
+      if (state.tourState === 'playing') pauseCinematicTour(true);
+      animateCameraTo(new THREE.Vector3(7.6, 1.55, 0.0), INITIAL_CAM_TARGET, 0.85);
+    });
+
+    document.getElementById('preset-top').addEventListener('click', () => {
+      if (state.tourState === 'playing') pauseCinematicTour(true);
+      animateCameraTo(new THREE.Vector3(0.0, 8.2, 0.65), INITIAL_CAM_TARGET, 0.85);
+    });
+
+    // Kontrol Tambah Objek
+    document.querySelectorAll('.spawn-btn').forEach((btn) => {
+      btn.addEventListener('click', () => spawnExtraObject(btn.dataset.spawn));
+    });
+
+    document.getElementById('select-extra-object').addEventListener('change', (e) => {
+      selectExtraObject(e.target.value);
+    });
+
+    document.getElementById('slider-obj-x').addEventListener('input', (e) => {
+      const item = state.extraObjects.find((o) => o.id === state.selectedExtraId);
+      if (!item) return;
+      const v = Number(e.target.value);
+      item.mesh.position.x = v;
+      selectionRingMesh.position.x = v;
+      document.getElementById('obj-pos-x-val').textContent = v.toFixed(1);
+    });
+
+    document.getElementById('slider-obj-z').addEventListener('input', (e) => {
+      const item = state.extraObjects.find((o) => o.id === state.selectedExtraId);
+      if (!item) return;
+      const v = Number(e.target.value);
+      item.mesh.position.z = v;
+      selectionRingMesh.position.z = v;
+      document.getElementById('obj-pos-z-val').textContent = v.toFixed(1);
+    });
+
+    document.getElementById('slider-obj-rot').addEventListener('input', (e) => {
+      const item = state.extraObjects.find((o) => o.id === state.selectedExtraId);
+      if (!item) return;
+      const deg = Number(e.target.value);
+      item.mesh.rotation.y = THREE.MathUtils.degToRad(deg);
+      document.getElementById('obj-rot-y-val').textContent = `${deg}°`;
+    });
+
+    document.getElementById('btn-delete-selected').addEventListener('click', removeSelectedExtraObject);
+    document.getElementById('btn-clear-objects').addEventListener('click', () => clearAllExtraObjects(false));
+
+    // Tombol Bar Atas
+    document.getElementById('btn-toggle-labels').addEventListener('click', () => {
+      state.labelsVisible = !state.labelsVisible;
+      document.getElementById('btn-labels-text').textContent = `Label: ${state.labelsVisible ? 'ON' : 'OFF'}`;
+    });
+
+    document.getElementById('btn-screenshot').addEventListener('click', captureHighResScreenshot);
+    document.getElementById('btn-reset').addEventListener('click', resetEverything);
+
+    // Lipat / Buka Drawer Panel Kontrol
+    const drawerEl = document.getElementById('control-drawer');
+    document.getElementById('btn-toggle-drawer').addEventListener('click', () => {
+      drawerEl.classList.toggle('collapsed');
+    });
+
+    // Responsif Resize Window
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    });
+
+    // =========================================================================
+    // 11. INISIALISASI AWAL & LOOP ANIMASI UTAMA
+    // =========================================================================
+    initBandDropdowns();
+    recalculateResistorBands();
+
+    // Pada layar ponsel kecil (< 768px), mulai dengan panel kontrol terlipat agar kanvas 3D luas
+    if (window.innerWidth < 768) {
+      drawerEl.classList.add('collapsed');
+    }
+
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const dt = Math.min(clock.getDelta(), 0.05);
+
+      // Update mekanika pemecahan resistor
+      updateExplodeKinematics(dt);
+
+      // Update Cinematic Tour atau transisi preset kamera
+      if (state.tourState === 'playing') {
+        stepCinematicTour(dt);
+      } else if (state.cameraAnim) {
+        const anim = state.cameraAnim;
+        anim.elapsed += dt;
+        const rawT = Math.min(1, anim.elapsed / anim.duration);
+        const easeT = 1 - Math.pow(1 - rawT, 3);
+        camera.position.lerpVectors(anim.startPos, anim.endPos, easeT);
+        controls.target.lerpVectors(anim.startTarget, anim.endTarget, easeT);
+        if (rawT >= 1) state.cameraAnim = null;
+      }
+
+      // Animasi lembut ring seleksi objek tambahan
+      if (selectionRingMesh.visible) {
+        selectionRingMesh.rotation.z += dt * 0.9;
+      }
+
+      controls.update();
+      updateAnnotationsProjection();
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('load', () => {
+      animate();
+    });
+  </script>
+</body>
+</html>

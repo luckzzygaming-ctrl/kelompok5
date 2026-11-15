@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dioda 3D: Bias Maju, Bias Mundur dan Penyearah</title>
+<style>
+:root{--bg:#0d1420;--pn:rgba(18,27,42,.88);--tx:#e6edf7;--mu:#93a4bd;--ac:#4fc3f7;--ok:#6ee787;--bad:#ff7b72;--wr:#ffd54a;--bd:rgba(255,255,255,.14);color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#dbe5f2;--pn:rgba(255,255,255,.9);--tx:#14202f;--mu:#51627a;--ac:#0a73b8;--ok:#1a7f37;--bad:#c62828;--wr:#9a6700;--bd:rgba(0,0,0,.16);color-scheme:light}}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--tx);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#wrap{position:relative;width:100%;height:100%}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+.pn{background:var(--pn);border:1px solid var(--bd);border-radius:12px;backdrop-filter:blur(8px)}
+#info{position:absolute;left:10px;top:10px;padding:10px 12px;width:min(250px,62vw);z-index:5}
+#info h1{font-size:14px;margin:0 0 6px}
+.r{display:flex;justify-content:space-between;gap:8px;padding:2px 0;color:var(--mu)}.r b{color:var(--tx);font-variant-numeric:tabular-nums}
+#st{padding:1px 8px;border-radius:99px;font-weight:700;font-size:12px}
+.s0{background:var(--bad);color:#fff}.s1{background:var(--wr);color:#111}.s2{background:var(--ok);color:#06210d}
+#sc{width:100%;height:76px;margin-top:6px;border-radius:8px;border:1px solid var(--bd)}
+#hint{font-size:12px;color:var(--mu);margin-top:6px}
+#tg{display:none;position:absolute;right:10px;top:10px;z-index:6}
+#cap{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(86px + env(safe-area-inset-bottom,0px));max-width:min(640px,92vw);padding:8px 14px;text-align:center;z-index:5;opacity:0;transition:opacity .4s;pointer-events:none}
+#cap.on{opacity:1}
+#bar{position:absolute;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom,0px));display:flex;gap:6px;padding:8px;overflow-x:auto;z-index:7;align-items:center}
+button{font:inherit;color:var(--tx);background:transparent;border:1px solid var(--bd);border-radius:8px;padding:7px 10px;cursor:pointer;white-space:nowrap}
+button:hover{border-color:var(--ac)}button.a{background:var(--ac);color:#04121c;border-color:var(--ac)}
+.sep{width:1px;align-self:stretch;background:var(--bd);flex:none}
+label.v{display:flex;gap:6px;align-items:center;color:var(--mu);white-space:nowrap}
+input[type=range]{width:90px;accent-color:var(--ac)}
+.lb{position:absolute;left:0;right:0;height:0;background:#000;transition:height .6s;z-index:4;pointer-events:none}
+#lt{top:0}#lb{bottom:0}.cine .lb{height:7vh}
+#toast{position:absolute;top:14px;left:50%;transform:translateX(-50%);padding:8px 14px;z-index:9;opacity:0;transition:opacity .3s;pointer-events:none}
+#toast.on{opacity:1}
+@media (max-width:640px){#tg{display:block}#info.c .r,#info.c #sc{width:100%;height:76px;margin-top:6px;border-radius:8px;border:1px solid var(--bd)}
+#hint{display:none}#info{width:min(220px,60vw)}}
+</style></head><body>
+<div id="wrap">
+<div class="lb" id="lt"></div><div class="lb" id="lb"></div>
+<div id="info" class="pn"><h1>Dioda: Bias Maju &amp; Mundur</h1>
+<div class="r"><span>Status</span><span id="st" class="s0">-</span></div>
+<div class="r"><span>Sumber</span><b id="vs">-</b></div>
+<div class="r"><span>Tegangan Vin</span><b id="vi">0</b></div>
+<div class="r"><span>Tegangan dioda D1</span><b id="vd">0</b></div>
+<div class="r"><span>Arus I</span><b id="ic">0</b></div>
+<div class="r"><span>Ambang konduksi</span><b id="vt">0</b></div>
+<div class="r"><span>Komponen seri</span><b id="nl">-</b></div>
+<canvas id="sc" width="460" height="152"></canvas>
+<div id="hint">Biru: Vin. Oranye: tegangan beban. Klik baterai untuk membalik polaritas; seret untuk memutar.</div></div>
+<button id="tg" class="pn">Info</button>
+<div id="cap" class="pn"></div><div id="toast" class="pn"></div>
+<div id="bar" class="pn">
+<button id="bPol">Polaritas: Normal</button><button id="bAC">Mode: DC</button><button id="bTour">▶ Tour sinematis</button><span class="sep"></span>
+<button id="bRot">Putar otomatis</button><button data-v="iso">Isometrik</button><button data-v="top">Atas</button><button data-v="front">Depan</button><button id="bLab" class="a">Label</button><span class="sep"></span>
+<button data-add="d">+ Dioda</button><button data-add="r">+ Resistor</button><button data-add="l">+ LED</button><button id="bUndo">Hapus terakhir</button><span class="sep"></span>
+<label class="v">Vs <input type="range" id="vcc" min="3" max="12" step=".5" value="9"><b id="vv" style="color:var(--tx)">9 V</b></label><span class="sep"></span>
+<button id="bShot">📷 Screenshot PNG</button><button id="bReset">↺ Reset</button></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+const $=i=>document.getElementById(i),V=(x,y,z)=>new THREE.Vector3(x,y,z);
+const wrap=$('wrap'),renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));wrap.prepend(renderer.domElement);
+const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(45,1,.1,100);
+const ctl=new THREE.OrbitControls(cam,renderer.domElement);
+ctl.enableDamping=true;ctl.maxPolarAngle=Math.PI*.495;ctl.minDistance=4;ctl.maxDistance=32;ctl.autoRotateSpeed=1.5;
+const HOME={p:[9,8,10],t:[0,0,0]};cam.position.set(...HOME.p);
+const mq=matchMedia('(prefers-color-scheme: light)');
+const theme=()=>scene.background=new THREE.Color(mq.matches?0xdbe5f2:0x0d1420);theme();mq.addEventListener('change',theme);
+scene.add(new THREE.AmbientLight(0xffffff,.6));
+const dl=new THREE.DirectionalLight(0xffffff,.8);dl.position.set(6,12,8);scene.add(dl);
+const M=(c,o={})=>new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.5,metalness:.1},o));
+const mesh=(g,m,x=0,y=0,z=0)=>{const o=new THREE.Mesh(g,m);o.position.set(x,y,z);return o};
+const GL=(()=>{const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d'),r=g.createRadialGradient(32,32,0,32,32,32);r.addColorStop(0,'#fff');r.addColorStop(.4,'rgba(255,255,255,.5)');r.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=r;g.fillRect(0,0,64,64);return new THREE.CanvasTexture(c)})();
+/* papan */
+scene.add(mesh(new THREE.BoxGeometry(15,.4,10),M(0x1b6b3a),0,-.2,0));
+const main=new THREE.Group();scene.add(main);const extras=new THREE.Group();scene.add(extras);
+/* jalur kawat */
+const P0=[V(-5.5,.5,-1),V(-5.5,.5,-3),V(5.5,.5,-3),V(5.5,.5,1),V(-5.5,.5,1)];
+const wm=M(0xd9a441,{metalness:.6,roughness:.35});
+function wire(p,g=main){const c=new THREE.CurvePath();for(let i=1;i<p.length;i++)c.add(new THREE.LineCurve3(p[i-1],p[i]));g.add(mesh(new THREE.TubeGeometry(c,64,.07,8),wm))}
+wire(P0);
+function mkPath(pts){const s=[];let n=0;for(let i=1;i<pts.length;i++){const l=pts[i-1].distanceTo(pts[i]);s.push([pts[i-1],pts[i],l,n]);n+=l}
+return{len:n,at(d,o){d=((d%n)+n)%n;for(const[a,b,l,c]of s)if(d<=c+l)return o.lerpVectors(a,b,(d-c)/l);return o}}}
+const PP=mkPath(P0),NP=34,pg=new THREE.BufferGeometry();pg.setAttribute('position',new THREE.BufferAttribute(new Float32Array(NP*3),3));
+const pts=new THREE.Points(pg,new THREE.PointsMaterial({map:GL,color:0xffd54a,size:.5,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));pts.frustumCulled=false;scene.add(pts);
+const labels=new THREE.Group();scene.add(labels);
+function label(t,x,y,z){const c=document.createElement('canvas');c.width=320;c.height=72;const g=c.getContext('2d');g.fillStyle='rgba(10,16,26,.85)';g.beginPath();g.roundRect?g.roundRect(4,8,312,56,14):g.rect(4,8,312,56);g.fill();g.fillStyle='#e6edf7';g.font='bold 28px system-ui,sans-serif';g.textAlign='center';g.fillText(t,160,47);
+const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true}));s.position.set(x,y,z);s.scale.set(2.6,.58,1);labels.add(s)}
+function resistor(x,z,cols,g){const r=new THREE.Group();r.position.set(x,.5,z);
+const b=mesh(new THREE.CylinderGeometry(.2,.2,.9,16),M(0xd8b98a));b.rotation.z=Math.PI/2;r.add(b);
+cols.forEach((c,i)=>{const k=mesh(new THREE.CylinderGeometry(.21,.21,.07,16),M(c));k.rotation.z=Math.PI/2;k.position.x=-.27+i*.17;r.add(k)});g.add(r);return r}
+const dms=[];
+function diode(x,z,g,flip){const r=new THREE.Group();r.position.set(x,.5,z);if(flip)r.rotation.y=Math.PI;
+const b=mesh(new THREE.CylinderGeometry(.22,.22,.8,20),M(0x1a1a1f,{roughness:.6}));b.rotation.z=Math.PI/2;
+const bm=M(0xc0c4cc,{metalness:.7,emissive:0x000000}),band=mesh(new THREE.CylinderGeometry(.235,.235,.14,20),bm,.33,0,0);band.rotation.z=Math.PI/2;
+r.add(b,band);g.add(r);dms.push({bm,r});return r}
+const leds=[],mainLight=new THREE.PointLight(0xff3b30,0,6);
+function makeLED(x,z,col,g){const r=new THREE.Group();r.position.set(x,0,z);
+const m=M(col,{emissive:col,emissiveIntensity:.1,transparent:true,opacity:.88});
+r.add(mesh(new THREE.CylinderGeometry(.38,.38,.15,20),M(0x888888),0,.08,0),mesh(new THREE.CylinderGeometry(.3,.3,.5,20),m,0,.4,0),mesh(new THREE.SphereGeometry(.3,20,12,0,Math.PI*2,0,Math.PI/2),m,0,.65,0));
+const gl=new THREE.Sprite(new THREE.SpriteMaterial({map:GL,color:col,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));gl.position.y=.8;gl.scale.set(2.2,2.2,1);r.add(gl);
+g.add(r);const o={r,m,gl};leds.push(o);return o}
+/* baterai/sumber */
+const bat=new THREE.Group();bat.position.set(-5.5,0,0);const pA=mesh(new THREE.CylinderGeometry(.18,.18,.6,12),M(0xd32f2f),0,.3,-1),pB=mesh(new THREE.CylinderGeometry(.18,.18,.6,12),M(0x111111),0,.3,1);
+bat.add(mesh(new THREE.BoxGeometry(1.4,1,1.4),M(0x222a38),0,.5,0),mesh(new THREE.BoxGeometry(1.42,.25,1.42),M(0xffb300),0,.8,0),pA,pB);main.add(bat);
+diode(-2.5,-3,main,false);resistor(.5,-3,[0xff9800,0xff9800,0x6d4c41],main);
+const ml=makeLED(3.2,-3,0xff3b30,main);ml.r.add(mainLight);mainLight.position.y=1;
+[['SUMBER',-5.5,1.9,0],['D1 anoda → katoda',-2.5,1.2,-3],['R 330 Ω',.5,1.2,-3],['LED',3.2,1.9,-3]].forEach(a=>label(...a));
+/* fisika */
+let pol=1,ac=false,T=0;
+const cnt=t=>stack.filter(s=>s.t===t).length;
+function solve(){const A=+$('vcc').value,vs=ac?A*Math.sin(2*Math.PI*.35*T):A,ve=pol*vs,nD=1+cnt('d'),nL=1+cnt('l'),R=330*(1+cnt('r')),Vth=.7*nD+2*nL;
+const I=ve>Vth?(ve-Vth)/R:0;return{ve,I,Vth,R,nD,nL,vd:ve<=0?ve:Math.min(ve,.7),vl:I>0?I*R+2*nL:0,st:ve<0?0:I>0?2:1}}
+const mA=a=>(a*1000).toFixed(1)+' mA',fv=v=>v.toFixed(2).replace('.',',')+' V';
+function setPol(v){pol=v;$('bPol').textContent='Polaritas: '+(pol>0?'Normal':'Terbalik');$('bPol').classList.toggle('a',pol<0)}
+function setAC(v){ac=v;$('bAC').textContent='Mode: '+(ac?'AC':'DC');$('bAC').classList.toggle('a',ac)}
+/* tween & tour */
+let tw=null,tour=null;const sm=k=>k*k*(3-2*k);
+function fly(p,t,d=1.2){tw={fp:cam.position.clone(),ft:ctl.target.clone(),tp:V(...p),tt:V(...t),t:0,d}}
+const STOPS=[{p:[9,8,10],t:[0,0,-1],x:'Dioda hanya mengizinkan arus mengalir satu arah: dari anoda ke katoda.',pol:1,ac:0},
+{p:[-9,3.5,3],t:[-5.5,.5,0],x:'Sumber tegangan DC memberi tegangan pada rangkaian seri dioda, resistor, dan LED.'},
+{p:[-2,2.6,-.2],t:[-2.5,.5,-3],x:'Bias maju: anoda ke sisi positif. Setelah melewati ≈0,7 V, dioda menghantar.'},
+{p:[5,3.5,.5],t:[2,.5,-3],x:'Arus dibatasi resistor; LED menyala karena arus maju mengalir.'},
+{p:[-2,5,2],t:[-2.5,.5,-3],x:'Polaritas dibalik: bias mundur. Dioda memblokir arus dan LED padam.',pol:-1},
+{p:[8,7,6],t:[0,0,-1],x:'Mode AC: arus hanya mengalir pada setengah gelombang positif (penyearah setengah gelombang).',pol:1,ac:1},
+{p:[9,8,10],t:[0,0,-1],x:'Tour selesai. Coba tambah dioda atau LED seri dan lihat ambang konduksi naik.',ac:0}];
+function nextStop(){tour.i++;if(tour.i>=STOPS.length)return stopTour();tour.t=0;tour.f={p:cam.position.clone(),t:ctl.target.clone()};const s=STOPS[tour.i];cap(s.x);if(s.pol!==undefined)setPol(s.pol);if(s.ac!==undefined)setAC(!!s.ac)}
+function startTour(){if(tour)return stopTour();tw=null;ctl.enabled=false;ctl.autoRotate=false;$('bRot').classList.remove('a');wrap.classList.add('cine');$('bTour').textContent='■ Hentikan tour';tour={i:-1,t:0};nextStop()}
+function stopTour(){tour=null;ctl.enabled=true;wrap.classList.remove('cine');$('bTour').textContent='▶ Tour sinematis';setTimeout(()=>{if(!tour)cap('')},3000)}
+function cap(t){const c=$('cap');c.textContent=t;c.classList.toggle('on',!!t)}
+let tt;function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('on'),2200)}
+/* objek tambahan (seri pada jalur kembali) */
+const stack=[],SX=[3.5,1.5,-.5,-2.5],used=new Set(),RC_=[0xf44336,0x4caf50,0x2196f3,0xffeb3b,0x9c27b0],LC=[0x66bb6a,0x42a5f5,0xffa000,0xba68c8];
+function add(t){const i=SX.findIndex((x,k)=>!used.has(k));if(i<0)return toast('Jalur seri penuh (maksimal 4 objek)');used.add(i);
+const g=new THREE.Group();extras.add(g);const x=SX[i];let o={t,g,i};
+if(t==='d'){diode(x,1,g,true);o.dm=dms[dms.length-1]}else if(t==='r')resistor(x,1,[0,1,2].map(()=>RC_[Math.random()*5|0]),g);else o.led=makeLED(x,1,LC[i],g);
+g.userData.b=performance.now();g.scale.setScalar(.01);stack.push(o)}
+function undo(){const o=stack.pop();if(!o)return toast('Belum ada objek tambahan');extras.remove(o.g);used.delete(o.i);if(o.led)leds.splice(leds.indexOf(o.led),1);if(o.dm)dms.splice(dms.indexOf(o.dm),1)}
+/* UI */
+document.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>add(b.dataset.add));$('bUndo').onclick=undo;
+$('bPol').onclick=()=>setPol(-pol);$('bAC').onclick=()=>setAC(!ac);
+const VW={iso:[[9,8,10],[0,0,-1]],top:[[0,17,.01],[0,0,-1]],front:[[0,4.5,15],[0,0,-1]]};
+document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{if(tour)return toast('Hentikan tour terlebih dahulu');fly(...VW[b.dataset.v])});
+$('bRot').onclick=()=>{if(tour)return;ctl.autoRotate=!ctl.autoRotate;$('bRot').classList.toggle('a',ctl.autoRotate)};
+$('bLab').onclick=()=>{labels.visible=!labels.visible;$('bLab').classList.toggle('a',labels.visible)};
+$('bTour').onclick=startTour;$('tg').onclick=()=>$('info').classList.toggle('c');if(innerWidth<=640)$('info').classList.add('c');
+$('vcc').oninput=e=>$('vv').textContent=e.target.value+' V';
+$('bReset').onclick=()=>{if(tour)stopTour();cap('');while(stack.length)undo();setPol(1);setAC(false);hist.length=0;$('vcc').value=9;$('vv').textContent='9 V';ctl.autoRotate=false;$('bRot').classList.remove('a');labels.visible=true;$('bLab').classList.add('a');fly(HOME.p,HOME.t,1);toast('Simulasi di-reset')};
+$('bShot').onclick=()=>{renderer.render(scene,cam);renderer.domElement.toBlob(async b=>{if(!b)return toast('Gagal membuat gambar');const f='dioda-3d-'+Date.now()+'.png';
+try{const d=window.claude&&await window.claude.use('downloads');if(d){await d.save({filename:f,data:b});toast('Screenshot PNG disimpan')}else{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=f;document.body.appendChild(a);a.click();a.remove();toast('Screenshot PNG diunduh')}}catch(e){toast('Penyimpanan dibatalkan')}},'image/png')};
+const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();let dn=null;const cv=renderer.domElement;
+cv.addEventListener('pointerdown',e=>dn=[e.clientX,e.clientY]);
+cv.addEventListener('pointerup',e=>{if(!dn||Math.hypot(e.clientX-dn[0],e.clientY-dn[1])>5)return;const r=cv.getBoundingClientRect();ndc.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ndc,cam);if(ray.intersectObject(bat,true).length)setPol(-pol)});
+function size(){const w=wrap.clientWidth||innerWidth,h=wrap.clientHeight||innerHeight;renderer.setSize(w,h,false);cam.aspect=w/h;cam.fov=w/h<1?65:45;cam.updateProjectionMatrix()}
+new ResizeObserver(size).observe(wrap);addEventListener('resize',size);size();
+/* osiloskop */
+const hist=[],sc=$('sc'),sg=sc.getContext('2d');
+function scope(){const cs=getComputedStyle(document.documentElement),W=sc.width,H=sc.height,m=H/2,A=14;sg.clearRect(0,0,W,H);sg.strokeStyle=cs.getPropertyValue('--bd');sg.beginPath();sg.moveTo(0,m);sg.lineTo(W,m);sg.stroke();
+[['--ac',2],['--wr',3]].forEach(([c,k])=>{sg.strokeStyle=cs.getPropertyValue(c).trim();sg.lineWidth=3;sg.beginPath();hist.forEach((h,i)=>{const x=(h[0]-(T-6))/6*W,y=m-h[k]/A*(m-6);i?sg.lineTo(x,y):sg.moveTo(x,y)});sg.stroke()})}
+/* loop */
+let last=performance.now(),acc=0;const tmp=V(0,0,0);let ps=0;
+function loop(now){requestAnimationFrame(loop);const dt=Math.min(.05,(now-last)/1000);last=now;T+=dt;
+if(tour){const s=STOPS[tour.i];tour.t+=dt;const e=sm(Math.min(1,tour.t/3));cam.position.lerpVectors(tour.f.p,V(...s.p),e);ctl.target.lerpVectors(tour.f.t,V(...s.t),e);if(tour.t>5.2)nextStop()}
+else if(tw){tw.t+=dt;const e=sm(Math.min(1,tw.t/tw.d));cam.position.lerpVectors(tw.fp,tw.tp,e);ctl.target.lerpVectors(tw.ft,tw.tt,e);if(tw.t>=tw.d)tw=null}
+ctl.update();
+const S=solve();
+acc+=dt;if(acc>.1){acc=0;const st=$('st');st.className='s'+S.st;st.textContent=['BIAS MUNDUR: terblokir','BIAS MAJU: belum konduksi','BIAS MAJU: konduksi'][S.st];$('vs').textContent=(ac?'AC':'DC')+' '+(pol>0?'normal':'terbalik');$('vi').textContent=fv(S.ve);$('vd').textContent=fv(S.vd);$('ic').textContent=mA(S.I);$('vt').textContent=fv(S.Vth);$('nl').textContent=S.nD+' dioda, '+S.nL+' LED, '+Math.round(S.R)+' Ω'}
+hist.push([T,S.ve,S.vl]);while(hist.length&&hist[0][0]<T-6)hist.shift();if(sc.offsetParent)scope();
+const br=Math.min(1,S.I/.02);leds.forEach(l=>{l.m.emissiveIntensity=.1+br*1.7;l.gl.material.opacity=br*.9});mainLight.intensity=br*1.6;
+dms.forEach(d=>d.bm.emissive.setHex(S.st===2?0x00c853:S.st===0?0xd50000:0x000000));
+pA.material.color.setHex(S.ve>=0?0xd32f2f:0x111111);pB.material.color.setHex(S.ve>=0?0x111111:0xd32f2f);
+pts.visible=S.I>0;if(S.I>0){ps+=(1+S.I*60)*dt;const a=pg.attributes.position;for(let i=0;i<NP;i++){PP.at(ps+i*PP.len/NP,tmp);a.setXYZ(i,tmp.x,tmp.y+.05,tmp.z)}a.needsUpdate=true}
+extras.children.forEach(g=>{const t=(now-g.userData.b)/450;if(t<1){const c=1.70158,u=t-1;g.scale.setScalar(Math.max(.01,1+(c+1)*u*u*u+c*u*u))}else g.scale.setScalar(1)});
+renderer.render(scene,cam)}
+requestAnimationFrame(loop);
+</script></body></html>

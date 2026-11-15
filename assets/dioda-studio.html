@@ -1,0 +1,2573 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Dioda 3D Studio</title>
+
+  <!-- Tailwind CSS untuk tata letak responsif & antarmuka glassmorphism -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Import Map Three.js ES Modules (three@0.160.0) -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --panel-bg: rgba(11, 15, 24, 0.82);
+      --panel-border: rgba(255, 255, 255, 0.11);
+      --accent-sky: #38bdf8;
+      --accent-amber: #f59e0b;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #080c13;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #f1f5f9;
+      user-select: none;
+    }
+
+    .font-mono-tech {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Kanvas 3D Fullscreen */
+    #canvas-container {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      touch-action: none;
+    }
+
+    #canvas-container canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      outline: none;
+    }
+
+    /* Panel Glassmorphism */
+    .glass-panel {
+      background: var(--panel-bg);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--panel-border);
+      box-shadow: 0 20px 48px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .glass-pill {
+      background: rgba(12, 17, 27, 0.86);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    }
+
+    /* Scrollbar Kustom */
+    .custom-scroll::-webkit-scrollbar {
+      width: 5px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.18);
+      border-radius: 999px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.32);
+    }
+
+    /* Range Slider Modern */
+    input[type="range"].studio-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.15);
+      outline: none;
+      cursor: pointer;
+    }
+    input[type="range"].studio-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #38bdf8, #0284c7);
+      border: 2px solid #0f172a;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+    input[type="range"].studio-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+    input[type="range"].studio-slider::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #38bdf8, #0284c7);
+      border: 2px solid #0f172a;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+      cursor: pointer;
+    }
+
+    /* Select Dark */
+    select.studio-select {
+      background-color: rgba(20, 27, 41, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: #f8fafc;
+      border-radius: 0.65rem;
+      padding: 0.45rem 0.65rem;
+      font-size: 0.8125rem;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+    select.studio-select:focus {
+      border-color: #38bdf8;
+    }
+
+    /* Layer Label Pin 3D */
+    #annotations-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+      overflow: hidden;
+    }
+
+    .annotation-pin {
+      position: absolute;
+      transform: translate(-50%, -100%);
+      pointer-events: auto;
+      cursor: pointer;
+      transition: opacity 0.2s ease, transform 0.15s ease;
+    }
+
+    .annotation-pin:hover .annotation-badge {
+      border-color: #38bdf8;
+      background: rgba(20, 28, 45, 0.96);
+      transform: translateY(-2px);
+    }
+
+    .annotation-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 11px;
+      border-radius: 999px;
+      background: rgba(11, 16, 26, 0.90);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: #f8fafc;
+      font-size: 11.5px;
+      font-weight: 600;
+      white-space: nowrap;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.48);
+      transition: all 0.2s ease;
+    }
+
+    .annotation-badge.active {
+      border-color: #facc15;
+      box-shadow: 0 0 18px rgba(250, 204, 21, 0.45);
+    }
+
+    .annotation-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* Efek Kilat Screenshot PNG */
+    #camera-flash {
+      position: fixed;
+      inset: 0;
+      background: #ffffff;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 60;
+      transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Tombol Studio */
+    .btn-studio {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.38rem;
+      border-radius: 0.7rem;
+      font-weight: 600;
+      transition: all 0.18s ease;
+      cursor: pointer;
+    }
+    .btn-studio:active {
+      transform: scale(0.97);
+    }
+
+    /* Transisi Panel Kontrol Lipat */
+    #control-drawer {
+      transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease;
+    }
+    #control-drawer.collapsed {
+      transform: translateX(calc(100% + 24px));
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    @media (max-width: 767px) {
+      #control-drawer.collapsed {
+        transform: translateY(calc(100% + 24px));
+      }
+      .annotation-badge {
+        font-size: 10px;
+        padding: 4px 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Kanvas Utama Three.js -->
+  <div id="canvas-container"></div>
+
+  <!-- Overlay Garis Leader & Pin Anotasi 3D -->
+  <div id="annotations-layer">
+    <svg id="annotation-lines" class="w-full h-full"></svg>
+    <div id="annotation-pins-container"></div>
+  </div>
+
+  <!-- Efek Kilat Kamera Screenshot -->
+  <div id="camera-flash"></div>
+
+  <!-- Toast Notifikasi -->
+  <div id="toast-container" class="fixed top-24 sm:top-16 left-1/2 -translate-x-1/2 z-50 pointer-events-none flex flex-col items-center gap-2"></div>
+
+  <!-- HEADER BAR ATAS -->
+  <header class="fixed top-3 left-3 right-3 z-30 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+    <!-- Kiri: Identitas Dioda 3D Studio & Indikator Aktif -->
+    <div class="flex items-center gap-2 pointer-events-auto">
+      <div class="glass-pill rounded-2xl px-3.5 py-2 flex items-center gap-3">
+        <!-- Ikon Skematik Dioda -->
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-sky-400 via-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shrink-0">
+          <svg class="w-4 h-4 text-slate-950" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="2" y1="12" x2="8" y2="12" />
+            <polygon points="8 6 16 12 8 18 8 6" fill="currentColor" />
+            <line x1="16" y1="6" x2="16" y2="18" />
+            <line x1="16" y1="12" x2="22" y2="12" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-xs sm:text-sm font-bold tracking-tight text-white">Dioda 3D Studio</h1>
+            <span id="header-material-pill" class="font-mono-tech text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-500/20 text-sky-300 border border-sky-400/30">
+              Si • 0,7 V
+            </span>
+          </div>
+          <p class="hidden sm:block text-[10px] text-slate-400">Anatomi Semikonduktor PN & Simulasi Bias</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Kanan: Tombol Aksi Cepat -->
+    <div class="flex items-center gap-1.5 pointer-events-auto">
+      <!-- Tombol Cepat Pecahkan / Gabungkan -->
+      <button id="btn-quick-explode" class="btn-studio glass-pill px-2.5 sm:px-3 py-2 text-xs text-sky-300 hover:bg-sky-500/20 border-sky-400/35" title="Belah atau gabungkan struktur dioda">
+        <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+        </svg>
+        <span id="btn-quick-explode-label">Pecahkan</span>
+      </button>
+
+      <!-- Toggle Label Anotasi -->
+      <button id="btn-toggle-labels" class="btn-studio glass-pill px-2.5 sm:px-3 py-2 text-xs text-amber-300 hover:bg-amber-500/20 border-amber-400/30" title="Tampilkan/sembunyikan label pin 3D">
+        <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+          <line x1="7" y1="7" x2="7.01" y2="7" />
+        </svg>
+        <span class="hidden sm:inline" id="btn-labels-text">Label: ON</span>
+      </button>
+
+      <!-- Tombol Screenshot PNG -->
+      <button id="btn-screenshot" class="btn-studio glass-pill px-2.5 sm:px-3 py-2 text-xs text-emerald-300 hover:bg-emerald-500/20 border-emerald-400/30" title="Unduh Screenshot PNG Resolusi Tinggi">
+        <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+          <circle cx="12" cy="13" r="4" />
+        </svg>
+        <span class="hidden md:inline">Screenshot PNG</span>
+      </button>
+
+      <!-- Tombol Reset -->
+      <button id="btn-reset" class="btn-studio glass-pill px-2.5 sm:px-3 py-2 text-xs text-rose-300 hover:bg-rose-500/20 border-rose-400/30" title="Reset kamera, bukaan, bias, dan objek tambahan">
+        <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+          <path d="M3 3v5h5" />
+        </svg>
+        <span class="hidden md:inline">Reset</span>
+      </button>
+
+      <!-- Tombol Lipat / Buka Drawer -->
+      <button id="btn-toggle-drawer" class="btn-studio glass-pill px-2.5 sm:px-3 py-2 text-xs text-slate-200 hover:bg-white/10" title="Buka/Tutup Panel Kontrol">
+        <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="4" y1="6" x2="20" y2="6" />
+          <line x1="4" y1="12" x2="20" y2="12" />
+          <line x1="4" y1="18" x2="20" y2="18" />
+        </svg>
+        <span>Panel</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- PANEL KONTROL SAMPING (Glassmorphism Drawer) -->
+  <aside id="control-drawer" class="fixed right-3 bottom-3 md:bottom-auto md:top-16 w-[calc(100vw-24px)] md:w-[355px] max-h-[56vh] md:max-h-[calc(100vh-84px)] glass-panel rounded-2xl z-30 flex flex-col overflow-hidden">
+    <!-- Navigasi 4 Tab -->
+    <div class="grid grid-cols-4 border-b border-white/10 bg-slate-950/60 p-1 gap-1 shrink-0">
+      <button data-tab="tab-struktur" class="tab-btn active py-2 px-1.5 rounded-xl text-[11px] font-semibold bg-sky-500/20 text-sky-300 border border-sky-400/35 transition">
+        Struktur
+      </button>
+      <button data-tab="tab-bias" class="tab-btn py-2 px-1.5 rounded-xl text-[11px] font-semibold text-slate-400 hover:text-white transition">
+        Simulasi PN
+      </button>
+      <button data-tab="tab-kamera" class="tab-btn py-2 px-1.5 rounded-xl text-[11px] font-semibold text-slate-400 hover:text-white transition">
+        Kamera
+      </button>
+      <button data-tab="tab-objek" class="tab-btn py-2 px-1.5 rounded-xl text-[11px] font-semibold text-slate-400 hover:text-white transition">
+        + Objek
+      </button>
+    </div>
+
+    <!-- Konten Scrollable -->
+    <div class="p-3.5 overflow-y-auto custom-scroll space-y-3.5 text-xs">
+
+      <!-- TAB 1: STRUKTUR BELAHAN & CINEMATIC TOUR -->
+      <div id="tab-struktur" class="tab-content space-y-3.5">
+        <!-- Bukaan Struktur -->
+        <div class="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="font-semibold text-slate-200 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+              Bukaan Struktur Dioda
+            </span>
+            <span id="explode-percent-label" class="font-mono-tech text-xs font-bold text-sky-300 bg-sky-500/15 px-2 py-0.5 rounded-md">0%</span>
+          </div>
+
+          <!-- 2 Mode Pemecahan -->
+          <div class="grid grid-cols-2 gap-1.5 bg-slate-950/75 p-1 rounded-xl border border-white/10">
+            <button id="mode-cutaway" class="py-1.5 px-2 rounded-lg text-[11px] font-semibold bg-sky-500/25 text-sky-300 border border-sky-400/40 transition">
+              Belah Melintang
+            </button>
+            <button id="mode-exploded" class="py-1.5 px-2 rounded-lg text-[11px] font-semibold text-slate-400 hover:text-white border border-transparent transition">
+              Pecah Meledak
+            </button>
+          </div>
+
+          <input id="slider-explode" type="range" min="0" max="100" value="0" step="1" class="studio-slider" />
+
+          <div class="grid grid-cols-3 gap-1.5">
+            <button id="btn-explode-0" class="btn-studio py-2 px-2 bg-white/10 hover:bg-white/15 text-slate-200 text-[11px] border border-white/10">
+              Utuh (0%)
+            </button>
+            <button id="btn-explode-50" class="btn-studio py-2 px-2 bg-sky-500/15 hover:bg-sky-500/25 text-sky-200 text-[11px] border border-sky-400/25">
+              Belah 50%
+            </button>
+            <button id="btn-explode-100" class="btn-studio py-2 px-2 bg-gradient-to-r from-sky-400 to-blue-500 text-slate-950 font-bold text-[11px] shadow-md shadow-sky-500/20 hover:brightness-110">
+              Pecah 100%
+            </button>
+          </div>
+        </div>
+
+        <!-- Cinematic Tour (4 Babak) -->
+        <div class="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="font-semibold text-slate-200 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+              Cinematic Tour (4 Babak)
+            </span>
+            <span id="tour-status-badge" class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-white/10">Siap</span>
+          </div>
+
+          <p class="text-[11px] text-slate-400 leading-relaxed">
+            Tur kamera otomatis 4 babak: bentuk luar, pembukaan selubung epoksi, simulasi bias maju PN, dan kembali ke sudut utama.
+          </p>
+
+          <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+            <div id="tour-progress-bar" class="h-full w-0 bg-gradient-to-r from-sky-400 via-emerald-400 to-amber-400 transition-all duration-150"></div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <button id="btn-tour-play" class="btn-studio py-2 px-3 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/35 text-xs">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="5 3 19 12 5 21 5 3" />
+              </svg>
+              <span id="tour-play-text">Mulai Tur</span>
+            </button>
+            <button id="btn-tour-stop" class="btn-studio py-2 px-3 bg-white/10 hover:bg-white/15 text-slate-300 border border-white/10 text-xs">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="6" width="12" height="12" rx="2" />
+              </svg>
+              <span>Hentikan Tur</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Daftar Inspeksi Anatomi Dioda -->
+        <div class="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-2">
+          <div class="text-[11px] font-semibold text-slate-300">Inspeksi Bagian Anatomi Dioda:</div>
+          <div id="inspect-parts-grid" class="grid grid-cols-2 gap-1.5"></div>
+        </div>
+      </div>
+
+      <!-- TAB 2: SIMULASI SEMIKONDUKTOR & BIAS -->
+      <div id="tab-bias" class="tab-content hidden space-y-3.5">
+        <!-- Kartu Ringkasan Status -->
+        <div class="p-3.5 rounded-xl bg-gradient-to-br from-sky-500/15 via-slate-900/85 to-slate-900 border border-sky-400/30 space-y-1.5">
+          <div class="flex items-center justify-between text-[11px] text-slate-400">
+            <span>Karakteristik Sambungan PN</span>
+            <span id="diode-mat-tag" class="font-mono-tech text-sky-300 font-bold">Silikon (Si)</span>
+          </div>
+          <div id="diode-knee-voltage" class="font-mono-tech text-lg font-bold text-white">
+            Tegangan Maju (V<sub>f</sub>): ≈ 0,7 V
+          </div>
+          <p id="diode-bias-summary" class="text-[11px] text-slate-300 leading-relaxed">
+            Kondisi Netral (0 V): Lapisan deplesi berada dalam keadaan setimbang di bidang pertemuan Tipe-P dan Tipe-N.
+          </p>
+        </div>
+
+        <!-- Pilihan Bahan Semikonduktor -->
+        <div class="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-2">
+          <div class="text-[11px] font-semibold text-slate-200">1. Pilih Bahan Semikonduktor:</div>
+          <div class="grid grid-cols-2 gap-2">
+            <button id="btn-diode-si" class="btn-studio py-2.5 px-2.5 bg-sky-500/25 text-sky-200 border border-sky-400/45 text-[11px] flex-col items-start">
+              <span class="font-bold">Silikon (Si)</span>
+              <span class="font-mono-tech text-[10px] text-sky-300">V_f ≈ 0,7 V</span>
+            </button>
+            <button id="btn-diode-ge" class="btn-studio py-2.5 px-2.5 bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 text-[11px] flex-col items-start">
+              <span class="font-bold">Germanium (Ge)</span>
+              <span class="font-mono-tech text-[10px] text-cyan-300">V_f ≈ 0,3 V</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Simulasi Kondisi Bias -->
+        <div class="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-semibold text-slate-200">2. Kondisi Tegangan Bias:</span>
+            <span id="bias-status-pill" class="font-mono-tech text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">NETRAL (0 V)</span>
+          </div>
+
+          <div class="space-y-1.5">
+            <button id="btn-bias-neutral" class="w-full btn-studio py-2.5 px-3 bg-white/15 text-white border border-white/30 text-[11px] justify-between">
+              <span>Netral (0 V)</span>
+              <span class="font-mono-tech text-[10px] text-slate-300">SETIMBANG</span>
+            </button>
+            <button id="btn-bias-forward" class="w-full btn-studio py-2.5 px-3 bg-white/5 hover:bg-emerald-500/15 text-slate-300 border border-white/10 text-[11px] justify-between">
+              <span>Bias Maju (+ ke −)</span>
+              <span class="font-mono-tech text-[10px] text-emerald-300">ARUS MENGALIR →</span>
+            </button>
+            <button id="btn-bias-reverse" class="w-full btn-studio py-2.5 px-3 bg-white/5 hover:bg-rose-500/15 text-slate-300 border border-white/10 text-[11px] justify-between">
+              <span>Bias Mundur (− ke +)</span>
+              <span class="font-mono-tech text-[10px] text-rose-300">DEPLESI MELEBAR</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Legenda Struktur Kristal -->
+        <div class="p-3 rounded-xl bg-white/[0.02] border border-white/10 space-y-1.5 text-[11px]">
+          <div class="font-semibold text-slate-300">Legenda Kristal Semikonduktor:</div>
+          <div class="flex items-center gap-2 text-slate-300">
+            <span class="w-3 h-3 rounded-sm bg-[#d2936c] border border-white/20 shrink-0"></span>
+            <span><strong>Tipe-P (Kiri / Anoda):</strong> Pembawa mayoritas <em>Hole</em> (+)</span>
+          </div>
+          <div class="flex items-center gap-2 text-slate-300">
+            <span class="w-3 h-3 rounded-sm bg-[#334155] border border-white/20 shrink-0"></span>
+            <span><strong>Tipe-N (Kanan / Katoda):</strong> Pembawa mayoritas <em>Elektron</em> (−)</span>
+          </div>
+          <div class="flex items-center gap-2 text-slate-300">
+            <span class="w-3 h-3 rounded-sm bg-[#facc15] border border-white/20 shrink-0"></span>
+            <span><strong>Sambungan PN:</strong> Zona Deplesi & Rekombinasi Muatan</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: KAMERA & PRESET -->
+      <div id="tab-kamera" class="tab-content hidden space-y-3.5">
+        <div class="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-2">
+          <div class="font-semibold text-slate-200 text-xs">Preset Sudut Pandang</div>
+          <div class="grid grid-cols-1 gap-1.5">
+            <button id="preset-iso" class="btn-studio py-2 px-3 bg-white/10 hover:bg-sky-500/20 hover:border-sky-400/40 text-slate-100 border border-white/10 text-xs justify-between">
+              <span>Isometrik</span>
+              <span class="text-[10px] text-slate-400 font-mono-tech">ISO 3D</span>
+            </button>
+            <button id="preset-front" class="btn-studio py-2 px-3 bg-white/10 hover:bg-sky-500/20 hover:border-sky-400/40 text-slate-100 border border-white/10 text-xs justify-between">
+              <span>Depan</span>
+              <span class="text-[10px] text-slate-400 font-mono-tech">FRONT</span>
+            </button>
+            <button id="preset-closeup" class="btn-studio py-2 px-3 bg-white/10 hover:bg-sky-500/20 hover:border-sky-400/40 text-slate-100 border border-white/10 text-xs justify-between">
+              <span>Close-Up PN</span>
+              <span class="text-[10px] text-amber-300 font-mono-tech">MACRO PN</span>
+            </button>
+            <div class="grid grid-cols-2 gap-1.5">
+              <button id="preset-side" class="btn-studio py-2 px-3 bg-white/10 hover:bg-sky-500/20 hover:border-sky-400/40 text-slate-100 border border-white/10 text-xs justify-between">
+                <span>Samping</span>
+                <span class="text-[10px] text-slate-400 font-mono-tech">SIDE</span>
+              </button>
+              <button id="preset-top" class="btn-studio py-2 px-3 bg-white/10 hover:bg-sky-500/20 hover:border-sky-400/40 text-slate-100 border border-white/10 text-xs justify-between">
+                <span>Atas</span>
+                <span class="text-[10px] text-slate-400 font-mono-tech">TOP</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="font-semibold text-slate-200 text-xs">Kontrol Orbit & Zoom</span>
+            <button id="btn-autorotate" class="btn-studio px-2.5 py-1 text-[11px] bg-white/10 hover:bg-white/15 text-slate-300 border border-white/10">
+              Auto-Rotasi: OFF
+            </button>
+          </div>
+
+          <div class="grid grid-cols-3 gap-1.5 pt-0.5">
+            <div></div>
+            <button id="cam-up" class="btn-studio py-2 bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-white/10 text-xs">↑ Atas</button>
+            <div></div>
+            <button id="cam-left" class="btn-studio py-2 bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-white/10 text-xs">← Kiri</button>
+            <button id="cam-center" class="btn-studio py-2 bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-400/25 text-[11px]">Fokus</button>
+            <button id="cam-right" class="btn-studio py-2 bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-white/10 text-xs">Kanan →</button>
+            <div></div>
+            <button id="cam-down" class="btn-studio py-2 bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-white/10 text-xs">↓ Bawah</button>
+            <div></div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <button id="cam-zoom-in" class="btn-studio py-2 bg-slate-800/90 hover:bg-slate-700 text-sky-300 border border-white/10 text-xs">+ Zoom In</button>
+            <button id="cam-zoom-out" class="btn-studio py-2 bg-slate-800/90 hover:bg-slate-700 text-sky-300 border border-white/10 text-xs">− Zoom Out</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: TAMBAH OBJEK (+ OBJEK) - TANPA RESISTOR -->
+      <div id="tab-objek" class="tab-content hidden space-y-3.5">
+        <div class="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="font-semibold text-slate-200 text-xs">Tambah Komponen ke Meja</span>
+            <span id="extra-count-badge" class="font-mono-tech text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-slate-300">0 Objek</span>
+          </div>
+          <div class="grid grid-cols-2 gap-1.5">
+            <button data-spawn="diode1n4007" class="spawn-btn btn-studio py-2 px-2 bg-slate-500/20 hover:bg-slate-500/30 text-slate-200 border border-slate-400/30 text-[11px]">
+              + Dioda 1N4007
+            </button>
+            <button data-spawn="zener" class="spawn-btn btn-studio py-2 px-2 bg-orange-500/20 hover:bg-orange-500/30 text-orange-200 border border-orange-400/30 text-[11px]">
+              + Dioda Zener
+            </button>
+            <button data-spawn="ledRed" class="spawn-btn btn-studio py-2 px-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-400/30 text-[11px]">
+              + LED Merah
+            </button>
+            <button data-spawn="ledGreen" class="spawn-btn btn-studio py-2 px-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 border border-emerald-400/30 text-[11px]">
+              + LED Hijau
+            </button>
+            <button data-spawn="capacitor" class="spawn-btn col-span-2 btn-studio py-2 px-2 bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 border border-sky-400/30 text-[11px]">
+              + Kapasitor Elko (100µF)
+            </button>
+          </div>
+        </div>
+
+        <!-- Inspector Objek Tambahan Terpilih -->
+        <div id="selected-object-panel" class="p-3 rounded-xl bg-white/[0.04] border border-sky-400/30 space-y-2.5 hidden">
+          <div class="flex items-center justify-between gap-2">
+            <span class="font-semibold text-sky-300 text-xs">Atur Objek Terpilih</span>
+            <button id="btn-delete-selected" class="btn-studio px-2.5 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-400/30 text-[11px]">
+              Hapus Objek
+            </button>
+          </div>
+
+          <select id="select-extra-object" class="studio-select w-full"></select>
+
+          <div class="space-y-2">
+            <div>
+              <div class="flex justify-between text-[11px] text-slate-300 mb-1">
+                <span>Posisi X (Kiri / Kanan)</span>
+                <span id="obj-pos-x-val" class="font-mono-tech text-sky-300">0.0</span>
+              </div>
+              <input id="slider-obj-x" type="range" min="-6.5" max="6.5" step="0.1" value="0" class="studio-slider" />
+            </div>
+
+            <div>
+              <div class="flex justify-between text-[11px] text-slate-300 mb-1">
+                <span>Posisi Z (Depan / Belakang)</span>
+                <span id="obj-pos-z-val" class="font-mono-tech text-sky-300">0.0</span>
+              </div>
+              <input id="slider-obj-z" type="range" min="-4.8" max="4.8" step="0.1" value="0" class="studio-slider" />
+            </div>
+
+            <div>
+              <div class="flex justify-between text-[11px] text-slate-300 mb-1">
+                <span>Rotasi Sudut Y</span>
+                <span id="obj-rot-y-val" class="font-mono-tech text-sky-300">0°</span>
+              </div>
+              <input id="slider-obj-rot" type="range" min="0" max="360" step="5" value="0" class="studio-slider" />
+            </div>
+          </div>
+
+          <button id="btn-clear-objects" class="btn-studio w-full py-2 bg-white/5 hover:bg-rose-500/20 text-slate-300 hover:text-rose-200 border border-white/10 text-[11px]">
+            Hapus Semua Objek Tambahan
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- KARTU INFO EDUKASI ANATOMI DIODA -->
+  <div id="part-info-card" class="fixed bottom-3 left-3 z-30 w-[calc(100vw-24px)] sm:w-[375px] glass-panel rounded-2xl p-3.5 hidden transition-all duration-200">
+    <div class="flex items-start justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <span id="part-info-dot" class="w-3 h-3 rounded-full bg-sky-400 shrink-0"></span>
+        <h3 id="part-info-title" class="text-xs sm:text-sm font-bold text-white">Judul Bagian</h3>
+      </div>
+      <button id="btn-close-part-info" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition" title="Tutup Info">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+    </div>
+    <p id="part-info-desc" class="mt-1.5 text-[11.5px] text-slate-300 leading-relaxed"></p>
+    <div class="mt-2 pt-2 border-t border-white/10 flex items-center justify-between gap-2 text-[10.5px] text-slate-400">
+      <span id="part-info-material" class="truncate">Material</span>
+      <button id="btn-part-toggle-explode" class="text-sky-300 hover:underline font-semibold shrink-0">Buka / Tutup Belahan</button>
+    </div>
+  </div>
+
+  <!-- SUBTITLE EDUKATIF CINEMATIC TOUR -->
+  <div id="tour-subtitle-box" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-20 w-[calc(100vw-24px)] max-w-xl glass-panel rounded-2xl px-4 py-3 hidden pointer-events-none">
+    <div class="flex items-center gap-2 mb-1">
+      <span id="tour-stage-tag" class="px-2 py-0.5 rounded-md bg-sky-500/25 text-sky-300 border border-sky-400/35 font-mono-tech text-[10px] font-bold">
+        BABAK 1/4
+      </span>
+      <span id="tour-stage-title" class="text-xs font-semibold text-amber-300">Judul Babak</span>
+    </div>
+    <p id="tour-subtitle-text" class="text-xs sm:text-[13px] text-slate-100 leading-relaxed"></p>
+  </div>
+
+  <!-- SCRIPT UTAMA THREE.JS (ES MODULES) -->
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+    // =========================================================================
+    // 1. DATA ANATOMI & EDUKASI DIODA (BAHASA INDONESIA)
+    // =========================================================================
+    const DIODE_ANATOMY = {
+      anode: {
+        shortLabel: 'Anoda (+)',
+        title: 'Kaki Anoda (+) & Dudukan Kuningan',
+        dotColor: '#fb7185',
+        material: 'Material: Kawat Tembaga Berlapis Timah & Stud Kuningan',
+        desc: 'Terminal positif (+) di sisi kiri dioda dengan ujung chamfer dan flange solder. Terhubung langsung melalui dudukan kuningan internal ke kristal semikonduktor Tipe-P.'
+      },
+      cathode: {
+        shortLabel: 'Katoda (−)',
+        title: 'Kaki Katoda (−) — Sisi Cincin Perak',
+        dotColor: '#f87171',
+        material: 'Material: Kawat Tembaga Berlapis Timah (Tinned Copper)',
+        desc: 'Terminal negatif (−) di sisi kanan dioda yang ditandai dengan cincin perak pada selubung luar. Menerima aliran elektron dari kristal Tipe-N melalui kontak logam internal.'
+      },
+      encapsulation: {
+        shortLabel: 'Selubung Plastik (Enkapsulasi)',
+        title: 'Selubung Epoksi & Cincin Katoda Perak',
+        dotColor: '#c084fc',
+        material: 'Material: Resin Epoksi Hitam Satin + Rongga Kuningan Emas',
+        desc: 'Bodi silinder resin epoksi hitam pekat 100% solid (opaque) yang melindungi kristal semikonduktor dari cahaya, panas, dan kelembapan. Bagian dalamnya dilapisi rongga logam kuningan-emas pemantul cahaya.'
+      },
+      semiconductor: {
+        shortLabel: 'Semikonduktor (Silicon/Ge)',
+        title: 'Kristal Semikonduktor Tipe-P & Tipe-N',
+        dotColor: '#4ade80',
+        material: 'Material: Kristal Silikon (Si) / Germanium (Ge) Terdoping',
+        desc: 'Blok kristal semikonduktor persegi panjang yang terbelah dua secara presisi: sisi kiri Tipe-P (kaya pembawa muatan hole) dan sisi kanan Tipe-N (kaya elektron bebas).'
+      },
+      junction: {
+        shortLabel: 'Sambungan PN (Junction)',
+        title: 'Sambungan PN & Lapisan Deplesi',
+        dotColor: '#facc15',
+        material: 'Area Aktif: Bidang Pertemuan Kristal P & N (Depletion Zone)',
+        desc: 'Bidang batas pertemuan antara semikonduktor Tipe-P dan Tipe-N. Pada Bias Maju (+ ke −), lapisan deplesi menyempit sehingga arus mengalir; pada Bias Mundur (− ke +), lapisan deplesi melebar dan memblokir arus.'
+      },
+      contact: {
+        shortLabel: 'Kontak Logam (Internal Lead)',
+        title: 'Kontak Logam Internal (Silver-Nickel Leaf)',
+        dotColor: '#38bdf8',
+        material: 'Material: Pelat Pegas Logam Perak-Nikel (Silver-Nickel)',
+        desc: 'Pelat kontak logam internal meruncing yang menghubungkan sisi kanan kristal semikonduktor Tipe-N menuju pangkal Kaki Katoda (−) dengan resistansi kontak sangat rendah.'
+      }
+    };
+
+    const state = {
+      dissectMode: 'cutaway', // 'cutaway' | 'exploded'
+      explodeTarget: 0,
+      explodeCurrent: 0,
+      diodeMaterial: 'si',    // 'si' | 'ge'
+      diodeBias: 'neutral',   // 'neutral' | 'forward' | 'reverse'
+      labelsVisible: true,
+      autoRotate: false,
+      selectedPart: null,
+      tourState: 'idle',      // 'idle' | 'playing' | 'paused'
+      tourTime: 0,
+      tourDuration: 24.0,
+      cameraAnim: null,
+      extraObjects: [],
+      selectedExtraId: null,
+      extraCounter: 0
+    };
+
+    // =========================================================================
+    // 2. INISIALISASI SCENE, RENDERER, STUDIO ENVIRONMENT & KAMERA
+    // =========================================================================
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color('#090d16');
+    scene.fog = new THREE.FogExp2('#090d16', 0.024);
+
+    const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
+    const INITIAL_CAM_POS = new THREE.Vector3(0.45, 2.35, 7.3);
+    const INITIAL_CAM_TARGET = new THREE.Vector3(0.0, 1.15, 0.0);
+    camera.position.copy(INITIAL_CAM_POS);
+
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      preserveDrawingBuffer: true, // Wajib untuk tangkapan layar PNG resolusi tinggi
+      powerPreference: 'high-performance'
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.10;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
+
+    // Pencahayaan Lingkungan Studio PBR (RoomEnvironment)
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    const roomEnv = new RoomEnvironment();
+    const envRT = pmremGenerator.fromScene(roomEnv, 0.04);
+    scene.environment = envRT.texture;
+    scene.environmentIntensity = 0.92;
+    roomEnv.dispose();
+
+    // OrbitControls (Drag, Scroll Zoom, Right-Click Pan, Touch)
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.copy(INITIAL_CAM_TARGET);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.065;
+    controls.minDistance = 2.0;
+    controls.maxDistance = 18.0;
+    controls.maxPolarAngle = Math.PI * 0.485;
+    controls.update();
+
+    controls.addEventListener('start', () => {
+      state.cameraAnim = null;
+      if (state.tourState === 'playing') {
+        pauseCinematicTour(true);
+      }
+    });
+
+    // Pencahayaan Studio 3-Titik + Bayangan Halus
+    const ambientLight = new THREE.HemisphereLight('#dbeafe', '#1e293b', 0.50);
+    scene.add(ambientLight);
+
+    const keyLight = new THREE.DirectionalLight('#fff8eb', 2.2);
+    keyLight.position.set(4.5, 8.5, 5.5);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.set(2048, 2048);
+    keyLight.shadow.camera.near = 1;
+    keyLight.shadow.camera.far = 25;
+    const dShadow = 7.5;
+    keyLight.shadow.camera.left = -dShadow;
+    keyLight.shadow.camera.right = dShadow;
+    keyLight.shadow.camera.top = dShadow;
+    keyLight.shadow.camera.bottom = -dShadow;
+    keyLight.shadow.bias = -0.0004;
+    keyLight.shadow.normalBias = 0.015;
+    scene.add(keyLight);
+
+    const fillLight = new THREE.DirectionalLight('#bae6fd', 0.95);
+    fillLight.position.set(-6.0, 4.0, 3.5);
+    scene.add(fillLight);
+
+    const rimLight = new THREE.DirectionalLight('#fde68a', 1.2);
+    rimLight.position.set(0.0, 4.5, -6.5);
+    scene.add(rimLight);
+
+    // =========================================================================
+    // 3. TEKSTUR PROSEDURAL REALISTIS (CANVAS 2D)
+    // =========================================================================
+    function createWorkbenchTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1024;
+      canvas.height = 1024;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = '#131923';
+      ctx.fillRect(0, 0, 1024, 1024);
+
+      for (let i = 0; i < 18000; i++) {
+        const x = Math.random() * 1024;
+        const y = Math.random() * 1024;
+        ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.018)' : 'rgba(0,0,0,0.03)';
+        ctx.fillRect(x, y, 2, 2);
+      }
+
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.08)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 1024; i += 64) {
+        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 1024); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(1024, i); ctx.stroke();
+      }
+
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.16)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(16, 16, 992, 992);
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(4, 4);
+      tex.anisotropy = 8;
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    }
+
+    function createBrushedMetalTexture() {
+      const size = 512;
+      const canvas = document.createElement('canvas');
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#7e7e7e'; ctx.fillRect(0, 0, size, size);
+      for (let y = 0; y < size; y++) {
+        const tone = Math.floor(96 + Math.random() * 68);
+        ctx.fillStyle = `rgb(${tone}, ${tone}, ${tone})`;
+        ctx.fillRect(0, y, size, 1 + Math.random() * 1.2);
+      }
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      return tex;
+    }
+
+    function createEpoxyBlackTexture() {
+      const size = 512;
+      const canvas = document.createElement('canvas');
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#14161b';
+      ctx.fillRect(0, 0, size, size);
+      for (let i = 0; i < 16000; i++) {
+        const x = Math.random() * size;
+        const y = Math.random() * size;
+        const v = Math.floor(16 + Math.random() * 14);
+        ctx.fillStyle = `rgb(${v},${v + 1},${v + 3})`;
+        ctx.fillRect(x, y, 2, 2);
+      }
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    }
+
+    function createCrystalGrainTextures(baseHex) {
+      const size = 512;
+      const diffCanvas = document.createElement('canvas');
+      diffCanvas.width = size; diffCanvas.height = size;
+      const dCtx = diffCanvas.getContext('2d');
+
+      const bumpCanvas = document.createElement('canvas');
+      bumpCanvas.width = size; bumpCanvas.height = size;
+      const bCtx = bumpCanvas.getContext('2d');
+
+      const baseCol = new THREE.Color(baseHex);
+      const r0 = Math.round(baseCol.r * 255);
+      const g0 = Math.round(baseCol.g * 255);
+      const b0 = Math.round(baseCol.b * 255);
+
+      dCtx.fillStyle = baseHex;
+      dCtx.fillRect(0, 0, size, size);
+      bCtx.fillStyle = '#808080';
+      bCtx.fillRect(0, 0, size, size);
+
+      for (let i = 0; i < 18000; i++) {
+        const x = Math.random() * size;
+        const y = Math.random() * size;
+        const w = 1 + Math.random() * 2.4;
+        const h = 1 + Math.random() * 2.4;
+        const delta = Math.floor((Math.random() - 0.5) * 42);
+        const r = Math.max(0, Math.min(255, r0 + delta));
+        const g = Math.max(0, Math.min(255, g0 + delta));
+        const b = Math.max(0, Math.min(255, b0 + delta));
+        dCtx.fillStyle = `rgb(${r},${g},${b})`;
+        dCtx.fillRect(x, y, w, h);
+
+        const bv = Math.max(20, Math.min(240, 128 + delta * 2.2));
+        bCtx.fillStyle = `rgb(${bv},${bv},${bv})`;
+        bCtx.fillRect(x, y, w, h);
+      }
+
+      const map = new THREE.CanvasTexture(diffCanvas);
+      map.wrapS = THREE.RepeatWrapping; map.wrapT = THREE.RepeatWrapping;
+      map.colorSpace = THREE.SRGBColorSpace;
+
+      const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+      bumpMap.wrapS = THREE.RepeatWrapping; bumpMap.wrapT = THREE.RepeatWrapping;
+
+      return { map, bumpMap };
+    }
+
+    // =========================================================================
+    // 4. MEJA KERJA STUDIO & PENYANGGA AKRILIK
+    // =========================================================================
+    const benchMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(13.5, 13.5, 0.4, 72),
+      new THREE.MeshStandardMaterial({ map: createWorkbenchTexture(), roughness: 0.78, metalness: 0.08 })
+    );
+    benchMesh.position.y = -0.2;
+    benchMesh.receiveShadow = true;
+    scene.add(benchMesh);
+
+    const stageRing = new THREE.Mesh(
+      new THREE.RingGeometry(4.75, 4.82, 96),
+      new THREE.MeshBasicMaterial({ color: '#38bdf8', transparent: true, opacity: 0.18, side: THREE.DoubleSide })
+    );
+    stageRing.rotation.x = -Math.PI / 2;
+    stageRing.position.y = 0.003;
+    scene.add(stageRing);
+
+    const standMat = new THREE.MeshPhysicalMaterial({
+      color: '#cbd5e1',
+      transmission: 0.72,
+      opacity: 1,
+      transparent: true,
+      roughness: 0.15,
+      ior: 1.48,
+      thickness: 0.2
+    });
+    [-3.15, 3.15].forEach((sx) => {
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.38, 0.08, 24), standMat);
+      base.position.set(sx, 0.04, 0);
+      base.castShadow = true; base.receiveShadow = true;
+      scene.add(base);
+
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 1.08, 16), standMat);
+      pillar.position.set(sx, 0.58, 0);
+      pillar.castShadow = true;
+      scene.add(pillar);
+    });
+
+    // =========================================================================
+    // 5. HELPER GEOMETRI WATERTIGHT SOLID (100% OPAQUE & PENUTUP BIDANG IRISAN)
+    // =========================================================================
+    function createWatertightRevolvedSector({
+      xMin,
+      xMax,
+      phiStart,
+      phiLength,
+      getOuterRadius,
+      getInnerRadius,
+      radialSegments = 64,
+      axialSteps = 44
+    }) {
+      const isFullCircle = Math.abs(phiLength - Math.PI * 2) < 1e-4;
+
+      const outerPts = [];
+      const innerPts = [];
+      for (let i = 0; i <= axialSteps; i++) {
+        const t = i / axialSteps;
+        const x = xMin + (xMax - xMin) * t;
+        const rOut = getOuterRadius(x);
+        const rIn = Math.min(rOut - 0.004, getInnerRadius(x, rOut));
+        outerPts.push({ x, r: rOut });
+        innerPts.push({ x, r: rIn });
+      }
+      const profile = [...outerPts, ...innerPts.reverse()];
+      const P = profile.length;
+
+      const positions = [];
+      const uvs = [];
+      const outerIndices = [];
+      const innerIndices = [];
+      const wallIndices = [];
+      const xSpan = Math.max(0.001, xMax - xMin);
+
+      for (let s = 0; s <= radialSegments; s++) {
+        const vFrac = s / radialSegments;
+        const phi = phiStart + phiLength * vFrac;
+        const cosP = Math.cos(phi);
+        const sinP = Math.sin(phi);
+
+        for (let p = 0; p < P; p++) {
+          const pt = profile[p];
+          positions.push(pt.x, pt.r * cosP, pt.r * sinP);
+          uvs.push((pt.x - xMin) / xSpan, vFrac);
+        }
+      }
+
+      for (let s = 0; s < radialSegments; s++) {
+        for (let p = 0; p < P; p++) {
+          const pNext = (p + 1) % P;
+          const a = s * P + p;
+          const b = (s + 1) * P + p;
+          const c = (s + 1) * P + pNext;
+          const d = s * P + pNext;
+
+          let targetArr = wallIndices;
+          if (p < axialSteps) {
+            targetArr = outerIndices;
+          } else if (p > axialSteps && p < P - 1) {
+            targetArr = innerIndices;
+          }
+
+          targetArr.push(a, b, d);
+          targetArr.push(b, c, d);
+        }
+      }
+
+      // Penutup bidang irisan radial (cross-section caps) agar 100% solid tanpa celah
+      if (!isFullCircle) {
+        const contour2D = profile.map((pt) => new THREE.Vector2(pt.x, pt.r));
+        const capTriangles = THREE.ShapeUtils.triangulateShape(contour2D, []);
+
+        [
+          { phi: phiStart, flip: true },
+          { phi: phiStart + phiLength, flip: false }
+        ].forEach(({ phi, flip }) => {
+          const baseIndex = positions.length / 3;
+          const cosP = Math.cos(phi);
+          const sinP = Math.sin(phi);
+
+          for (let p = 0; p < P; p++) {
+            const pt = profile[p];
+            positions.push(pt.x, pt.r * cosP, pt.r * sinP);
+            uvs.push((pt.x - xMin) / xSpan, 0.5);
+          }
+
+          for (let t = 0; t < capTriangles.length; t++) {
+            const [i0, i1, i2] = capTriangles[t];
+            if (flip) {
+              wallIndices.push(baseIndex + i0, baseIndex + i2, baseIndex + i1);
+            } else {
+              wallIndices.push(baseIndex + i0, baseIndex + i1, baseIndex + i2);
+            }
+          }
+        });
+      }
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+
+      const allIndices = [...outerIndices, ...innerIndices, ...wallIndices];
+      geo.setIndex(allIndices);
+      geo.addGroup(0, outerIndices.length, 0);
+      geo.addGroup(outerIndices.length, innerIndices.length, 1);
+      geo.addGroup(outerIndices.length + innerIndices.length, wallIndices.length, 2);
+
+      geo.computeVertexNormals();
+      return geo;
+    }
+
+    function createThickBandSector({ xMin, xMax, phiStart, phiLength, getOuterRadius, lift = 0.014, radialSegments = 64 }) {
+      const bevel = Math.min(0.018, (xMax - xMin) * 0.14);
+      const samples = [
+        { x: xMin, d: 0.002 },
+        { x: xMin + bevel, d: lift },
+        { x: xMax - bevel, d: lift },
+        { x: xMax, d: 0.002 }
+      ];
+      return createWatertightRevolvedSector({
+        xMin,
+        xMax,
+        phiStart,
+        phiLength,
+        radialSegments,
+        axialSteps: 12,
+        getOuterRadius: (x) => {
+          let d = lift;
+          if (x < samples[1].x) {
+            const t = (x - samples[0].x) / Math.max(0.0001, samples[1].x - samples[0].x);
+            d = 0.002 + (lift - 0.002) * t;
+          } else if (x > samples[2].x) {
+            const t = (samples[3].x - x) / Math.max(0.0001, samples[3].x - samples[2].x);
+            d = 0.002 + (lift - 0.002) * t;
+          }
+          return getOuterRadius(x) + d;
+        },
+        getInnerRadius: (x) => getOuterRadius(x) - 0.014
+      });
+    }
+
+    // =========================================================================
+    // 6. MODEL 3D DIODA FOTOREALISTIK & 100% SOLID (1N4007 / SILIKON & GERMANIUM)
+    // =========================================================================
+    const diodeGroup = new THREE.Group();
+    diodeGroup.position.set(0, 1.15, 0);
+    scene.add(diodeGroup);
+
+    const brushedTex = createBrushedMetalTexture();
+
+    // Profil luar bodi epoksi silindris dengan ujung chamfer/bevel halus
+    function getDiodeOuterRadius(x) {
+      const ax = Math.abs(x);
+      const L = 1.80;
+      if (ax >= L) return 0.105;
+      if (ax > 1.62) {
+        const t = (L - ax) / (L - 1.62);
+        return 0.105 + (0.78 - 0.105) * Math.pow(Math.sin(t * Math.PI * 0.5), 0.56);
+      }
+      return 0.78;
+    }
+
+    // Material 100% Solid (transparent: false, opacity: 1.0, depthWrite: true)
+    const epoxyOuterMat = new THREE.MeshPhysicalMaterial({
+      map: createEpoxyBlackTexture(),
+      color: '#14161b',
+      roughness: 0.30,
+      metalness: 0.05,
+      clearcoat: 0.58,
+      clearcoatRoughness: 0.24,
+      transparent: false,
+      opacity: 1.0,
+      depthWrite: true,
+      depthTest: true,
+      side: THREE.FrontSide
+    });
+
+    // Rongga dalam berlapis logam kuningan/emas metalik pemantul cahaya studio
+    const brassInteriorMat = new THREE.MeshStandardMaterial({
+      color: '#c9a64c',
+      roughnessMap: brushedTex,
+      metalness: 0.86,
+      roughness: 0.25,
+      transparent: false,
+      opacity: 1.0,
+      depthWrite: true,
+      side: THREE.FrontSide
+    });
+
+    // Penutup bidang potong (cross-section caps) bertekstur epoksi abu gelap padat
+    const epoxyCutWallMat = new THREE.MeshStandardMaterial({
+      color: '#282c35',
+      roughness: 0.52,
+      metalness: 0.08,
+      transparent: false,
+      opacity: 1.0,
+      depthWrite: true,
+      side: THREE.FrontSide
+    });
+
+    const diodeShellMaterials = [epoxyOuterMat, brassInteriorMat, epoxyCutWallMat];
+
+    // Pembagian sudut presisi:
+    // Bagian penutup irisan depan-atas = 135 derajat (0.75 * Math.PI)
+    // Bagian utama bawah-belakang      = 225 derajat (1.25 * Math.PI)
+    const CUT_LENGTH = Math.PI * 0.75;  // 135°
+    const CUT_START = -0.055 * Math.PI; // Menghadap depan-atas langsung ke kamera
+    const CRADLE_START = CUT_START + CUT_LENGTH;
+    const CRADLE_LENGTH = Math.PI * 2 - CUT_LENGTH; // 225°
+
+    // Grup Bodi Utama Bawah/Belakang (225° + Tutup Ujung Kiri & Kanan)
+    const lowerShellGroup = new THREE.Group();
+    diodeGroup.add(lowerShellGroup);
+
+    const leftEndDome = new THREE.Mesh(
+      createWatertightRevolvedSector({
+        xMin: -1.80, xMax: -1.42, phiStart: 0, phiLength: Math.PI * 2,
+        getOuterRadius: getDiodeOuterRadius,
+        getInnerRadius: (x, rOut) => Math.min(0.60, Math.max(0.105, rOut - 0.14)),
+        radialSegments: 64, axialSteps: 18
+      }),
+      diodeShellMaterials
+    );
+    leftEndDome.castShadow = true; leftEndDome.receiveShadow = true;
+    leftEndDome.userData.partKey = 'encapsulation';
+
+    const rightEndDome = new THREE.Mesh(
+      createWatertightRevolvedSector({
+        xMin: 1.42, xMax: 1.80, phiStart: 0, phiLength: Math.PI * 2,
+        getOuterRadius: getDiodeOuterRadius,
+        getInnerRadius: (x, rOut) => Math.min(0.60, Math.max(0.105, rOut - 0.14)),
+        radialSegments: 64, axialSteps: 18
+      }),
+      diodeShellMaterials
+    );
+    rightEndDome.castShadow = true; rightEndDome.receiveShadow = true;
+    rightEndDome.userData.partKey = 'encapsulation';
+
+    const lowerCradleMesh = new THREE.Mesh(
+      createWatertightRevolvedSector({
+        xMin: -1.42, xMax: 1.42, phiStart: CRADLE_START, phiLength: CRADLE_LENGTH,
+        getOuterRadius: getDiodeOuterRadius,
+        getInnerRadius: () => 0.60,
+        radialSegments: 54, axialSteps: 22
+      }),
+      diodeShellMaterials
+    );
+    lowerCradleMesh.castShadow = true; lowerCradleMesh.receiveShadow = true;
+    lowerCradleMesh.userData.partKey = 'encapsulation';
+
+    lowerShellGroup.add(leftEndDome, rightEndDome, lowerCradleMesh);
+
+    // Grup Penutup Irisan Depan-Atas (135° Watertight Solid)
+    const upperCutawayGroup = new THREE.Group();
+    diodeGroup.add(upperCutawayGroup);
+
+    const upperCutawayMesh = new THREE.Mesh(
+      createWatertightRevolvedSector({
+        xMin: -1.42, xMax: 1.42, phiStart: CUT_START, phiLength: CUT_LENGTH,
+        getOuterRadius: getDiodeOuterRadius,
+        getInnerRadius: () => 0.60,
+        radialSegments: 42, axialSteps: 22
+      }),
+      diodeShellMaterials
+    );
+    upperCutawayMesh.castShadow = true; upperCutawayMesh.receiveShadow = true;
+    upperCutawayMesh.userData.partKey = 'encapsulation';
+    upperCutawayGroup.add(upperCutawayMesh);
+
+    // Cincin Katoda Perak Metalik (Silver Band) terbagi presisi 225° & 135°
+    const silverBandMat = new THREE.MeshStandardMaterial({
+      color: '#e2e8f0',
+      roughnessMap: brushedTex,
+      metalness: 0.88,
+      roughness: 0.20,
+      transparent: false,
+      opacity: 1.0,
+      depthWrite: true,
+      side: THREE.FrontSide
+    });
+
+    const cathodeBandLower = new THREE.Mesh(
+      createThickBandSector({
+        xMin: 1.12, xMax: 1.35,
+        phiStart: CRADLE_START, phiLength: CRADLE_LENGTH,
+        getOuterRadius: getDiodeOuterRadius, lift: 0.013, radialSegments: 54
+      }),
+      silverBandMat
+    );
+    cathodeBandLower.castShadow = true; cathodeBandLower.receiveShadow = true;
+    cathodeBandLower.userData.partKey = 'cathode';
+    lowerShellGroup.add(cathodeBandLower);
+
+    const cathodeBandUpper = new THREE.Mesh(
+      createThickBandSector({
+        xMin: 1.12, xMax: 1.35,
+        phiStart: CUT_START, phiLength: CUT_LENGTH,
+        getOuterRadius: getDiodeOuterRadius, lift: 0.013, radialSegments: 42
+      }),
+      silverBandMat
+    );
+    cathodeBandUpper.castShadow = true; cathodeBandUpper.receiveShadow = true;
+    cathodeBandUpper.userData.partKey = 'cathode';
+    upperCutawayGroup.add(cathodeBandUpper);
+
+    // Material Kawat Terminal Timah-Perak Mengilap
+    const terminalMetalMat = new THREE.MeshStandardMaterial({
+      color: '#e6ecf5',
+      roughnessMap: brushedTex,
+      metalness: 0.96,
+      roughness: 0.16,
+      transparent: false,
+      opacity: 1.0
+    });
+
+    // Helper Kaki Terminal dengan Flange Solder & Ujung Chamfer
+    function createDiodeLeadWithFlange(sideSign, length = 2.75, radius = 0.095, partKey) {
+      const group = new THREE.Group();
+      const pts = [
+        new THREE.Vector2(0.0, 0.0),
+        new THREE.Vector2(radius * 1.48, 0.0),      // Flange solder di titik masuk bodi
+        new THREE.Vector2(radius * 1.48, 0.06),
+        new THREE.Vector2(radius * 1.15, 0.11),
+        new THREE.Vector2(radius, 0.14),
+        new THREE.Vector2(radius, length - 0.08),
+        new THREE.Vector2(radius * 0.62, length - 0.01),
+        new THREE.Vector2(0.0, length)
+      ];
+      const geo = new THREE.LatheGeometry(pts, 36);
+      geo.rotateZ(sideSign > 0 ? -Math.PI / 2 : Math.PI / 2);
+      const mesh = new THREE.Mesh(geo, terminalMetalMat);
+      mesh.castShadow = true; mesh.receiveShadow = true;
+      mesh.userData.partKey = partKey;
+      group.add(mesh);
+      return group;
+    }
+
+    // Kaki Anoda (+) di kiri & Dudukan Kuningan Internal
+    const anodeAssemblyGroup = new THREE.Group();
+    diodeGroup.add(anodeAssemblyGroup);
+
+    const anodeOuterLead = createDiodeLeadWithFlange(-1, 2.75, 0.095, 'anode');
+    anodeOuterLead.position.x = -1.78;
+    anodeAssemblyGroup.add(anodeOuterLead);
+
+    const anodeInnerShaft = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.115, 0.115, 0.95, 28).rotateZ(Math.PI / 2),
+      terminalMetalMat
+    );
+    anodeInnerShaft.position.x = -1.24;
+    anodeInnerShaft.castShadow = true;
+    anodeInnerShaft.userData.partKey = 'anode';
+
+    const anodeBrassPedestal = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.25, 0.28, 0.22, 32).rotateZ(Math.PI / 2),
+      brassInteriorMat
+    );
+    anodeBrassPedestal.position.x = -0.69;
+    anodeBrassPedestal.castShadow = true;
+    anodeBrassPedestal.userData.partKey = 'anode';
+
+    anodeAssemblyGroup.add(anodeInnerShaft, anodeBrassPedestal);
+
+    // Blok Kristal Semikonduktor (Tipe-P Kiri & Tipe-N Kanan)
+    const semiconductorGroup = new THREE.Group();
+    diodeGroup.add(semiconductorGroup);
+
+    const pTex = createCrystalGrainTextures('#d2936c');
+    const nTex = createCrystalGrainTextures('#2b303a');
+
+    const pCrystalMat = new THREE.MeshStandardMaterial({
+      map: pTex.map,
+      bumpMap: pTex.bumpMap,
+      bumpScale: 0.016,
+      color: '#ffffff',
+      metalness: 0.26,
+      roughness: 0.40,
+      transparent: false,
+      opacity: 1.0
+    });
+
+    const nCrystalMat = new THREE.MeshStandardMaterial({
+      map: nTex.map,
+      bumpMap: nTex.bumpMap,
+      bumpScale: 0.016,
+      color: '#ffffff',
+      metalness: 0.30,
+      roughness: 0.36,
+      transparent: false,
+      opacity: 1.0
+    });
+
+    // Kristal Tipe-P (Sisi Kiri / Anoda)
+    const pBlockMesh = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.62, 0.62), pCrystalMat);
+    pBlockMesh.position.set(-0.29, 0, 0);
+    pBlockMesh.castShadow = true; pBlockMesh.receiveShadow = true;
+    pBlockMesh.userData.partKey = 'semiconductor';
+    semiconductorGroup.add(pBlockMesh);
+
+    // Kristal Tipe-N (Sisi Kanan / Katoda)
+    const nBlockMesh = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.62, 0.62), nCrystalMat);
+    nBlockMesh.position.set(0.29, 0, 0);
+    nBlockMesh.castShadow = true; nBlockMesh.receiveShadow = true;
+    nBlockMesh.userData.partKey = 'semiconductor';
+    semiconductorGroup.add(nBlockMesh);
+
+    // Bidang Sambungan PN (Junction) di tengah (x = 0)
+    const pnJunctionMat = new THREE.MeshStandardMaterial({
+      color: '#facc15',
+      emissive: '#f59e0b',
+      emissiveIntensity: 0.30,
+      metalness: 0.55,
+      roughness: 0.22
+    });
+    const pnJunctionMesh = new THREE.Mesh(new THREE.BoxGeometry(0.024, 0.636, 0.636), pnJunctionMat);
+    pnJunctionMesh.position.set(0, 0, 0);
+    pnJunctionMesh.userData.partKey = 'junction';
+    semiconductorGroup.add(pnJunctionMesh);
+
+    // Visualisasi Lapisan Deplesi (Depletion Zone) Dinamis
+    const depletionMat = new THREE.MeshStandardMaterial({
+      color: '#fb7185',
+      emissive: '#e11d48',
+      emissiveIntensity: 0.45,
+      transparent: true,
+      opacity: 0.28,
+      depthWrite: false
+    });
+    const depletionZoneMesh = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.654, 0.654), depletionMat);
+    depletionZoneMesh.scale.x = 0.08;
+    depletionZoneMesh.userData.partKey = 'junction';
+    semiconductorGroup.add(depletionZoneMesh);
+
+    // Partikel Pembawa Muatan untuk Simulasi Bias Maju & Bias Mundur
+    const carrierGroup = new THREE.Group();
+    diodeGroup.add(carrierGroup);
+    const carrierParticles = [];
+    const carrierGeo = new THREE.SphereGeometry(0.036, 12, 12);
+    for (let i = 0; i < 20; i++) {
+      const mat = new THREE.MeshBasicMaterial({ color: '#34d399' });
+      const pMesh = new THREE.Mesh(carrierGeo, mat);
+      pMesh.visible = false;
+      carrierGroup.add(pMesh);
+      carrierParticles.push({
+        mesh: pMesh,
+        phase: i / 20,
+        yOff: Math.sin(i * 2.4) * 0.17,
+        zOff: Math.cos(i * 1.9) * 0.17
+      });
+    }
+
+    // Kontak Logam Internal (Silver-Nickel Contact Leaf)
+    const internalContactGroup = new THREE.Group();
+    diodeGroup.add(internalContactGroup);
+
+    const contactLeafMat = new THREE.MeshStandardMaterial({
+      color: '#dce2ec',
+      roughnessMap: brushedTex,
+      metalness: 0.92,
+      roughness: 0.18,
+      transparent: false,
+      opacity: 1.0
+    });
+
+    const cathodeInnerCollar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.30, 0.33, 0.16, 32).rotateZ(Math.PI / 2),
+      contactLeafMat
+    );
+    cathodeInnerCollar.position.set(1.42, 0, 0);
+    cathodeInnerCollar.castShadow = true;
+    cathodeInnerCollar.userData.partKey = 'contact';
+    internalContactGroup.add(cathodeInnerCollar);
+
+    const leafShape = new THREE.Shape();
+    leafShape.moveTo(0.57, -0.06);
+    leafShape.lineTo(0.88, -0.07);
+    leafShape.quadraticCurveTo(1.12, -0.02, 1.38, 0.18);
+    leafShape.lineTo(1.38, 0.30);
+    leafShape.quadraticCurveTo(1.06, 0.10, 0.84, 0.05);
+    leafShape.lineTo(0.57, 0.05);
+    leafShape.closePath();
+
+    const leafGeo = new THREE.ExtrudeGeometry(leafShape, {
+      depth: 0.26,
+      bevelEnabled: true,
+      bevelThickness: 0.015,
+      bevelSize: 0.012,
+      bevelSegments: 3
+    });
+    leafGeo.translate(0, 0, -0.13);
+    const contactLeafMesh = new THREE.Mesh(leafGeo, contactLeafMat);
+    contactLeafMesh.castShadow = true; contactLeafMesh.receiveShadow = true;
+    contactLeafMesh.userData.partKey = 'contact';
+    internalContactGroup.add(contactLeafMesh);
+
+    // Kaki Katoda (−) di kanan
+    const cathodeLeadGroup = new THREE.Group();
+    diodeGroup.add(cathodeLeadGroup);
+
+    const cathodeOuterLead = createDiodeLeadWithFlange(1, 2.75, 0.095, 'cathode');
+    cathodeOuterLead.position.x = 1.78;
+    cathodeLeadGroup.add(cathodeOuterLead);
+
+    // Garis Bantu Sumbu untuk Mode Pecah Meledak (Exploded View)
+    const axisGuidePts = [
+      new THREE.Vector3(-4.2, 0, 0), new THREE.Vector3(4.2, 0, 0),
+      new THREE.Vector3(0, 0.2, 0), new THREE.Vector3(0, 1.85, 0.95),
+      new THREE.Vector3(1.23, 0.2, 0), new THREE.Vector3(1.23, 2.05, 1.15)
+    ];
+    const axisGuideGeo = new THREE.BufferGeometry().setFromPoints(axisGuidePts);
+    const axisGuideMat = new THREE.LineDashedMaterial({
+      color: '#38bdf8',
+      dashSize: 0.14,
+      gapSize: 0.09,
+      transparent: true,
+      opacity: 0.0
+    });
+    const axisGuideLines = new THREE.LineSegments(axisGuideGeo, axisGuideMat);
+    axisGuideLines.computeLineDistances();
+    diodeGroup.add(axisGuideLines);
+
+    // =========================================================================
+    // 7. SIMULASI BAHAN SEMIKONDUKTOR (Si / Ge) & KONDISI BIAS
+    // =========================================================================
+    function updateDiodeSimulationVisuals() {
+      const isSi = state.diodeMaterial === 'si';
+
+      // Perubahan warna kristal Silikon vs Germanium kebiruan-perak
+      if (isSi) {
+        pCrystalMat.color.set('#ffffff');
+        nCrystalMat.color.set('#ffffff');
+      } else {
+        pCrystalMat.color.set('#b8d4e8');
+        nCrystalMat.color.set('#7ea2be');
+      }
+
+      document.getElementById('header-material-pill').textContent = isSi ? 'Si • 0,7 V' : 'Ge • 0,3 V';
+      document.getElementById('diode-mat-tag').textContent = isSi ? 'Silikon (Si)' : 'Germanium (Ge)';
+      document.getElementById('diode-knee-voltage').innerHTML = isSi
+        ? 'Tegangan Maju (V<sub>f</sub>): ≈ 0,7 V'
+        : 'Tegangan Maju (V<sub>f</sub>): ≈ 0,3 V';
+
+      const pillEl = document.getElementById('bias-status-pill');
+      const summaryEl = document.getElementById('diode-bias-summary');
+
+      if (state.diodeBias === 'neutral') {
+        pnJunctionMat.color.set('#facc15');
+        pnJunctionMat.emissive.set('#f59e0b');
+        pnJunctionMat.emissiveIntensity = 0.30;
+
+        depletionMat.color.set('#f59e0b');
+        depletionMat.emissive.set('#d97706');
+        depletionMat.opacity = 0.25;
+        depletionZoneMesh.scale.x = 0.08;
+
+        carrierParticles.forEach((p) => { p.mesh.visible = false; });
+
+        pillEl.textContent = 'NETRAL (0 V)';
+        pillEl.className = 'font-mono-tech text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300';
+        summaryEl.textContent = 'Kondisi Netral (0 V): Lapisan deplesi berada dalam keadaan setimbang di bidang pertemuan Tipe-P dan Tipe-N.';
+      } else if (state.diodeBias === 'forward') {
+        pnJunctionMat.color.set('#34d399');
+        pnJunctionMat.emissive.set('#10b981');
+        pnJunctionMat.emissiveIntensity = 1.55;
+
+        // Lapisan deplesi menyempit
+        depletionMat.color.set('#34d399');
+        depletionMat.emissive.set('#059669');
+        depletionMat.opacity = 0.22;
+        depletionZoneMesh.scale.x = 0.03;
+
+        carrierParticles.forEach((p) => {
+          p.mesh.visible = true;
+          p.mesh.material.color.set('#34d399');
+        });
+
+        pillEl.textContent = 'BIAS MAJU (+ → −)';
+        pillEl.className = 'font-mono-tech text-[10px] px-2 py-0.5 rounded bg-emerald-500/25 text-emerald-300 border border-emerald-400/35';
+        summaryEl.textContent = `Bias Maju (+ ke −): Lapisan deplesi menyempit dan arus pembawa muatan mengalir lancar melintasi Sambungan PN karena tegangan melebihi ${isSi ? '0,7 V' : '0,3 V'}.`;
+      } else if (state.diodeBias === 'reverse') {
+        pnJunctionMat.color.set('#fb7185');
+        pnJunctionMat.emissive.set('#e11d48');
+        pnJunctionMat.emissiveIntensity = 0.85;
+
+        // Lapisan deplesi melebar menjadi penghalang merah-amber
+        depletionMat.color.set('#fb7185');
+        depletionMat.emissive.set('#e11d48');
+        depletionMat.opacity = 0.44;
+        depletionZoneMesh.scale.x = 0.24;
+
+        carrierParticles.forEach((p) => {
+          p.mesh.visible = true;
+          p.mesh.material.color.set('#fb7185');
+        });
+
+        pillEl.textContent = 'BIAS MUNDUR (− → +)';
+        pillEl.className = 'font-mono-tech text-[10px] px-2 py-0.5 rounded bg-rose-500/25 text-rose-300 border border-rose-400/35';
+        summaryEl.textContent = 'Bias Mundur (− ke +): Lapisan deplesi melebar membentuk penghalang potensial tinggi di Sambungan PN sehingga aliran arus terhenti.';
+      }
+    }
+
+    function stepDiodeBiasAnimation(elapsedTime) {
+      if (state.diodeBias === 'forward') {
+        pnJunctionMat.emissiveIntensity = 1.3 + Math.sin(elapsedTime * 6.5) * 0.35;
+        carrierParticles.forEach((p) => {
+          const prog = (elapsedTime * 0.68 + p.phase) % 1.0; // Anoda (-2.4) menuju Katoda (+2.4)
+          const x = -2.4 + prog * 4.8;
+          p.mesh.position.set(x, p.yOff, p.zOff);
+          p.mesh.scale.setScalar(0.75 + 0.4 * Math.sin(prog * Math.PI));
+        });
+      } else if (state.diodeBias === 'reverse') {
+        depletionMat.opacity = 0.35 + Math.sin(elapsedTime * 4.5) * 0.12;
+        carrierParticles.forEach((p, idx) => {
+          const isLeft = idx % 2 === 0;
+          const osc = Math.abs(Math.sin(elapsedTime * 2.5 + p.phase * 6.28)) * 0.62;
+          const x = isLeft ? (-0.36 - osc) : (0.36 + osc);
+          p.mesh.position.set(x, p.yOff, p.zOff);
+          p.mesh.scale.setScalar(0.85);
+        });
+      }
+    }
+
+    // =========================================================================
+    // 8. LABEL PIN 3D INTERAKTIF & KARTU EDUKASI
+    // =========================================================================
+    const DIODE_PINS = [
+      {
+        key: 'anode',
+        label: 'Anoda (+)',
+        color: '#fb7185',
+        getAnchor: () => diodeGroup.localToWorld(new THREE.Vector3(anodeAssemblyGroup.position.x - 2.95, 0.08, 0.0)),
+        offset: { x: -38, y: -52 }
+      },
+      {
+        key: 'cathode',
+        label: 'Katoda (−)',
+        color: '#f87171',
+        getAnchor: () => diodeGroup.localToWorld(new THREE.Vector3(cathodeLeadGroup.position.x + 2.95, 0.08, 0.0)),
+        offset: { x: 38, y: -52 }
+      },
+      {
+        key: 'encapsulation',
+        label: 'Selubung Plastik (Enkapsulasi)',
+        color: '#c084fc',
+        getAnchor: () => diodeGroup.localToWorld(new THREE.Vector3(-0.92, lowerShellGroup.position.y - 0.68, 0.25)),
+        offset: { x: -32, y: 58 }
+      },
+      {
+        key: 'semiconductor',
+        label: 'Semikonduktor (Silicon/Ge)',
+        color: '#4ade80',
+        getAnchor: () => diodeGroup.localToWorld(new THREE.Vector3(pBlockMesh.position.x - 0.06, 0.30, 0.18)),
+        offset: { x: -58, y: -76 }
+      },
+      {
+        key: 'junction',
+        label: 'Sambungan PN (Junction)',
+        color: '#facc15',
+        getAnchor: () => diodeGroup.localToWorld(new THREE.Vector3(0.0, 0.32, 0.15)),
+        offset: { x: 0, y: -84 }
+      },
+      {
+        key: 'contact',
+        label: 'Kontak Logam (Internal Lead)',
+        color: '#38bdf8',
+        getAnchor: () => diodeGroup.localToWorld(new THREE.Vector3(internalContactGroup.position.x + 0.90, 0.16, 0.12)),
+        offset: { x: 58, y: -70 }
+      }
+    ];
+
+    const pinsContainer = document.getElementById('annotation-pins-container');
+    const linesSvg = document.getElementById('annotation-lines');
+    const pinElements = [];
+
+    DIODE_PINS.forEach((item) => {
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('stroke', item.color);
+      line.setAttribute('stroke-width', '1.6');
+      line.setAttribute('stroke-dasharray', '3 3');
+      line.setAttribute('opacity', '0.88');
+      linesSvg.appendChild(line);
+
+      const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      dot.setAttribute('r', '4');
+      dot.setAttribute('fill', item.color);
+      dot.setAttribute('stroke', '#0f172a');
+      dot.setAttribute('stroke-width', '1.5');
+      linesSvg.appendChild(dot);
+
+      const pin = document.createElement('div');
+      pin.className = 'annotation-pin';
+      pin.innerHTML = `
+        <div class="annotation-badge" data-key="${item.key}">
+          <span class="annotation-dot" style="background:${item.color}"></span>
+          <span>${item.label}</span>
+        </div>
+      `;
+      pin.addEventListener('click', (e) => {
+        e.stopPropagation();
+        selectAnatomyPart(item.key);
+      });
+      pinsContainer.appendChild(pin);
+
+      pinElements.push({ config: item, line, dot, pin });
+    });
+
+    function updateAnnotationsProjection() {
+      const layer = document.getElementById('annotations-layer');
+      if (!state.labelsVisible) {
+        layer.style.display = 'none';
+        return;
+      }
+      layer.style.display = 'block';
+
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const isMobile = w < 640;
+
+      pinElements.forEach(({ config, line, dot, pin }) => {
+        const anchor3D = config.getAnchor();
+        const projected = anchor3D.clone().project(camera);
+
+        if (projected.z > 1) {
+          pin.style.opacity = '0'; line.style.opacity = '0'; dot.style.opacity = '0';
+          return;
+        }
+
+        const sx = (projected.x * 0.5 + 0.5) * w;
+        const sy = (-projected.y * 0.5 + 0.5) * h;
+
+        const scaleOff = isMobile ? 0.62 : 1.0;
+        const bx = Math.max(85, Math.min(w - 85, sx + config.offset.x * scaleOff));
+        const by = Math.max(82, Math.min(h - 36, sy + config.offset.y * scaleOff));
+
+        pin.style.opacity = '1';
+        pin.style.left = `${bx}px`;
+        pin.style.top = `${by}px`;
+
+        line.style.opacity = '0.88';
+        line.setAttribute('x1', sx);
+        line.setAttribute('y1', sy);
+        line.setAttribute('x2', bx);
+        line.setAttribute('y2', by - 6);
+
+        dot.style.opacity = '1';
+        dot.setAttribute('cx', sx);
+        dot.setAttribute('cy', sy);
+
+        const badge = pin.querySelector('.annotation-badge');
+        badge.classList.toggle('active', state.selectedPart === config.key);
+      });
+    }
+
+    function initAnatomyShortcuts() {
+      const grid = document.getElementById('inspect-parts-grid');
+      Object.entries(DIODE_ANATOMY).forEach(([key, info]) => {
+        const btn = document.createElement('button');
+        btn.className = 'btn-studio py-2 px-2 bg-white/[0.05] hover:bg-white/[0.12] text-slate-200 border border-white/10 text-[11px] justify-start truncate';
+        btn.innerHTML = `<span class="w-2 h-2 rounded-full shrink-0" style="background:${info.dotColor}"></span><span class="truncate">${info.shortLabel}</span>`;
+        btn.addEventListener('click', () => selectAnatomyPart(key));
+        grid.appendChild(btn);
+      });
+    }
+
+    function selectAnatomyPart(key) {
+      state.selectedPart = key;
+      const info = DIODE_ANATOMY[key];
+      if (!info) return;
+
+      // Buka belahan otomatis jika memilih komponen internal saat bodi masih tertutup
+      if (['semiconductor', 'junction', 'contact'].includes(key) && state.explodeTarget < 0.75) {
+        setExplodeTarget(1.0);
+      }
+
+      document.getElementById('part-info-dot').style.backgroundColor = info.dotColor;
+      document.getElementById('part-info-title').textContent = info.title;
+      document.getElementById('part-info-desc').textContent = info.desc;
+      document.getElementById('part-info-material').textContent = info.material;
+      document.getElementById('part-info-card').classList.remove('hidden');
+    }
+
+    // =========================================================================
+    // 9. KINEMATIKA BELAH MELINTANG (CUTAWAY) & PECAH MELEDAK (EXPLODED VIEW)
+    // =========================================================================
+    function setDissectMode(mode) {
+      state.dissectMode = mode;
+      const btnCut = document.getElementById('mode-cutaway');
+      const btnExp = document.getElementById('mode-exploded');
+      btnCut.className = mode === 'cutaway'
+        ? 'py-1.5 px-2 rounded-lg text-[11px] font-semibold bg-sky-500/25 text-sky-300 border border-sky-400/40 transition'
+        : 'py-1.5 px-2 rounded-lg text-[11px] font-semibold text-slate-400 hover:text-white border border-transparent transition';
+      btnExp.className = mode === 'exploded'
+        ? 'py-1.5 px-2 rounded-lg text-[11px] font-semibold bg-sky-500/25 text-sky-300 border border-sky-400/40 transition'
+        : 'py-1.5 px-2 rounded-lg text-[11px] font-semibold text-slate-400 hover:text-white border border-transparent transition';
+    }
+
+    function setExplodeTarget(val01) {
+      state.explodeTarget = Math.max(0, Math.min(1, val01));
+      const pct = Math.round(state.explodeTarget * 100);
+      document.getElementById('slider-explode').value = pct;
+      document.getElementById('explode-percent-label').textContent = `${pct}%`;
+      document.getElementById('btn-quick-explode-label').textContent =
+        state.explodeTarget > 0.5 ? 'Gabungkan' : 'Pecahkan';
+    }
+
+    function updateDissectionKinematics(dt) {
+      const lerpFactor = 1 - Math.exp(-8.5 * dt);
+      state.explodeCurrent += (state.explodeTarget - state.explodeCurrent) * lerpFactor;
+      if (Math.abs(state.explodeTarget - state.explodeCurrent) < 0.0005) {
+        state.explodeCurrent = state.explodeTarget;
+      }
+
+      const t = state.explodeCurrent;
+      const ease = 1 - Math.pow(1 - t, 3);
+      const isExploded = state.dissectMode === 'exploded';
+
+      // Penutup irisan depan-atas (135°)
+      upperCutawayGroup.position.set(
+        0,
+        (isExploded ? 1.48 : 1.18) * ease,
+        (isExploded ? 0.84 : 0.62) * ease
+      );
+      upperCutawayGroup.rotation.x = (isExploded ? -0.32 : -0.20) * ease;
+
+      // Bodi utama bawah/belakang (225°)
+      lowerShellGroup.position.set(0, (isExploded ? -0.36 : -0.05) * ease, 0);
+
+      if (isExploded) {
+        // Pecah Meledak: pisahkan seluruh komponen secara aksial & radial dengan garis sumbu
+        cathodeBandUpper.position.set(0, 0.28 * ease, 0.16 * ease);
+        anodeAssemblyGroup.position.x = -0.82 * ease;
+        pBlockMesh.position.x = -0.29 - 0.22 * ease;
+        nBlockMesh.position.x = 0.29 + 0.22 * ease;
+        internalContactGroup.position.x = 0.58 * ease;
+        cathodeLeadGroup.position.x = 1.05 * ease;
+        axisGuideMat.opacity = 0.45 * ease;
+      } else {
+        // Belah Melintang (Cutaway): isi dalam tetap tersambung presisi
+        cathodeBandUpper.position.set(0, 0, 0);
+        anodeAssemblyGroup.position.x = -0.08 * ease;
+        pBlockMesh.position.x = -0.29;
+        nBlockMesh.position.x = 0.29;
+        internalContactGroup.position.x = 0;
+        cathodeLeadGroup.position.x = 0.08 * ease;
+        axisGuideMat.opacity = 0.0;
+      }
+    }
+
+    function animateCameraTo(pos, target, duration = 0.85) {
+      state.cameraAnim = {
+        startPos: camera.position.clone(),
+        endPos: pos.clone(),
+        startTarget: controls.target.clone(),
+        endTarget: target.clone(),
+        elapsed: 0,
+        duration
+      };
+    }
+
+    // =========================================================================
+    // 10. TAMBAH OBJEK KE MEJA KERJA (+ OBJEK — KHUSUS KOMPONEN NON-RESISTOR)
+    // =========================================================================
+    const extraObjectsGroup = new THREE.Group();
+    scene.add(extraObjectsGroup);
+
+    const selectionRingMesh = new THREE.Mesh(
+      new THREE.RingGeometry(0.62, 0.72, 48),
+      new THREE.MeshBasicMaterial({ color: '#38bdf8', transparent: true, opacity: 0.78, side: THREE.DoubleSide })
+    );
+    selectionRingMesh.rotation.x = -Math.PI / 2;
+    selectionRingMesh.position.y = 0.008;
+    selectionRingMesh.visible = false;
+    scene.add(selectionRingMesh);
+
+    const SPAWN_SLOTS = [
+      { x: -3.2, z: 2.3 }, { x: 3.2, z: 2.3 },
+      { x: -3.4, z: -2.1 }, { x: 3.4, z: -2.1 },
+      { x: 0.0, z: 2.85 }, { x: 0.0, z: -2.85 },
+      { x: -4.9, z: 0.3 }, { x: 4.9, z: 0.3 }
+    ];
+
+    function buildExtraComponentMesh(type) {
+      const group = new THREE.Group();
+
+      if (type === 'diode1n4007') {
+        const body = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.24, 0.24, 1.15, 32).rotateZ(Math.PI / 2),
+          new THREE.MeshStandardMaterial({ color: '#14161b', roughness: 0.32, metalness: 0.08 })
+        );
+        body.position.y = 0.26; body.castShadow = true; body.receiveShadow = true;
+        group.add(body);
+
+        const cathodeBand = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.245, 0.245, 0.16, 32).rotateZ(Math.PI / 2),
+          new THREE.MeshStandardMaterial({ color: '#e2e8f0', metalness: 0.88, roughness: 0.20 })
+        );
+        cathodeBand.position.set(0.36, 0.26, 0);
+        group.add(cathodeBand);
+
+        [-1, 1].forEach((s) => {
+          const horiz = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.45, 12).rotateZ(Math.PI / 2), terminalMetalMat);
+          horiz.position.set(s * 0.78, 0.26, 0); horiz.castShadow = true;
+          const vert = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.26, 12), terminalMetalMat);
+          vert.position.set(s * 0.99, 0.13, 0); vert.castShadow = true;
+          group.add(horiz, vert);
+        });
+        group.userData.displayName = 'Dioda 1N4007';
+      } else if (type === 'zener') {
+        // Dioda Zener (Bodi oranye-merah mengilap dengan pita katoda hitam pekat)
+        const body = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.21, 0.21, 1.05, 32).rotateZ(Math.PI / 2),
+          new THREE.MeshPhysicalMaterial({ color: '#ea580c', roughness: 0.20, clearcoat: 0.85, metalness: 0.05 })
+        );
+        body.position.y = 0.24; body.castShadow = true; body.receiveShadow = true;
+        group.add(body);
+
+        const blackBand = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.215, 0.215, 0.18, 32).rotateZ(Math.PI / 2),
+          new THREE.MeshStandardMaterial({ color: '#0f172a', roughness: 0.35 })
+        );
+        blackBand.position.set(0.32, 0.24, 0);
+        group.add(blackBand);
+
+        [-1, 1].forEach((s) => {
+          const horiz = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.44, 12).rotateZ(Math.PI / 2), terminalMetalMat);
+          horiz.position.set(s * 0.72, 0.24, 0); horiz.castShadow = true;
+          const vert = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.24, 12), terminalMetalMat);
+          vert.position.set(s * 0.93, 0.12, 0); vert.castShadow = true;
+          group.add(horiz, vert);
+        });
+        group.userData.displayName = 'Dioda Zener';
+      } else if (type === 'ledRed' || type === 'ledGreen') {
+        const isRed = type === 'ledRed';
+        const c = isRed
+          ? { name: 'Merah', hex: '#ef4444', emissive: '#dc2626' }
+          : { name: 'Hijau', hex: '#22c55e', emissive: '#16a34a' };
+        const domeMat = new THREE.MeshPhysicalMaterial({
+          color: c.hex, emissive: c.emissive, emissiveIntensity: 1.45,
+          transmission: 0.55, transparent: true, opacity: 0.92, roughness: 0.12, ior: 1.5
+        });
+        const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.12, 28), domeMat);
+        rim.position.y = 0.42;
+        const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.55, 28), domeMat);
+        cyl.position.y = 0.72; cyl.castShadow = true;
+        const sphere = new THREE.Mesh(new THREE.SphereGeometry(0.24, 28, 16, 0, Math.PI * 2, 0, Math.PI / 2), domeMat);
+        sphere.position.y = 0.995;
+        const die = new THREE.Mesh(new THREE.SphereGeometry(0.08, 16, 16), new THREE.MeshBasicMaterial({ color: '#ffffff' }));
+        die.position.y = 0.76;
+        const glowLight = new THREE.PointLight(c.hex, 1.4, 3.2, 1.8);
+        glowLight.position.set(0, 0.85, 0);
+        group.add(rim, cyl, sphere, die, glowLight);
+
+        [-0.09, 0.09].forEach((lx, idx) => {
+          const legLen = idx === 0 ? 0.40 : 0.34; // Anoda lebih panjang dari Katoda
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, legLen, 12), terminalMetalMat);
+          leg.position.set(lx, legLen / 2, 0); leg.castShadow = true;
+          group.add(leg);
+        });
+        group.userData.displayName = `LED ${c.name}`;
+      } else if (type === 'capacitor') {
+        const body = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.42, 0.42, 1.15, 36),
+          new THREE.MeshPhysicalMaterial({ color: '#172554', roughness: 0.26, metalness: 0.1, clearcoat: 0.75 })
+        );
+        body.position.y = 0.78; body.castShadow = true; body.receiveShadow = true;
+        group.add(body);
+
+        const stripe = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.423, 0.423, 1.12, 36, 1, true, 0.2, 0.45),
+          new THREE.MeshStandardMaterial({ color: '#cbd5e1', roughness: 0.35, metalness: 0.4 })
+        );
+        stripe.position.y = 0.78;
+        group.add(stripe);
+
+        const topCap = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.39, 0.41, 0.04, 32),
+          new THREE.MeshStandardMaterial({ color: '#e2e8f0', metalness: 0.92, roughness: 0.2 })
+        );
+        topCap.position.y = 1.36;
+        group.add(topCap);
+
+        [-0.15, 0.15].forEach((lx, idx) => {
+          const len = idx === 0 ? 0.32 : 0.26;
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, len, 12), terminalMetalMat);
+          leg.position.set(lx, len / 2, 0); leg.castShadow = true;
+          group.add(leg);
+        });
+        group.userData.displayName = 'Kapasitor Elko';
+      }
+
+      return group;
+    }
+
+    function spawnExtraObject(type) {
+      const idx = state.extraCounter++;
+      const mesh = buildExtraComponentMesh(type);
+      const slot = SPAWN_SLOTS[state.extraObjects.length % SPAWN_SLOTS.length];
+      const ringOffset = Math.floor(state.extraObjects.length / SPAWN_SLOTS.length) * 0.95;
+      mesh.position.set(slot.x + (slot.x >= 0 ? ringOffset : -ringOffset), 0, slot.z);
+
+      const id = `extra-${idx}`;
+      mesh.userData.extraId = id;
+      mesh.traverse((child) => { if (child.isMesh) child.userData.extraId = id; });
+
+      extraObjectsGroup.add(mesh);
+      state.extraObjects.push({ id, name: `${mesh.userData.displayName} #${idx + 1}`, mesh });
+
+      selectExtraObject(id);
+      refreshExtraObjectsUI();
+      showToast(`${mesh.userData.displayName} ditambahkan ke meja.`);
+    }
+
+    function selectExtraObject(id) {
+      state.selectedExtraId = id;
+      const item = state.extraObjects.find((o) => o.id === id);
+      const panel = document.getElementById('selected-object-panel');
+
+      if (!item) {
+        selectionRingMesh.visible = false;
+        panel.classList.add('hidden');
+        return;
+      }
+
+      panel.classList.remove('hidden');
+      selectionRingMesh.visible = true;
+      selectionRingMesh.position.set(item.mesh.position.x, 0.008, item.mesh.position.z);
+
+      document.getElementById('select-extra-object').value = id;
+      document.getElementById('slider-obj-x').value = item.mesh.position.x.toFixed(1);
+      document.getElementById('obj-pos-x-val').textContent = item.mesh.position.x.toFixed(1);
+      document.getElementById('slider-obj-z').value = item.mesh.position.z.toFixed(1);
+      document.getElementById('obj-pos-z-val').textContent = item.mesh.position.z.toFixed(1);
+
+      const deg = Math.round(THREE.MathUtils.radToDeg(item.mesh.rotation.y) % 360);
+      const normDeg = deg < 0 ? deg + 360 : deg;
+      document.getElementById('slider-obj-rot').value = normDeg;
+      document.getElementById('obj-rot-y-val').textContent = `${normDeg}°`;
+    }
+
+    function refreshExtraObjectsUI() {
+      document.getElementById('extra-count-badge').textContent = `${state.extraObjects.length} Objek`;
+      const sel = document.getElementById('select-extra-object');
+      sel.innerHTML = '';
+      state.extraObjects.forEach((obj) => {
+        const opt = document.createElement('option');
+        opt.value = obj.id; opt.textContent = obj.name;
+        sel.appendChild(opt);
+      });
+      if (state.selectedExtraId) sel.value = state.selectedExtraId;
+    }
+
+    function removeSelectedExtraObject() {
+      if (!state.selectedExtraId) return;
+      const idx = state.extraObjects.findIndex((o) => o.id === state.selectedExtraId);
+      if (idx === -1) return;
+      const [removed] = state.extraObjects.splice(idx, 1);
+      extraObjectsGroup.remove(removed.mesh);
+      const nextObj = state.extraObjects[state.extraObjects.length - 1] || null;
+      selectExtraObject(nextObj ? nextObj.id : null);
+      refreshExtraObjectsUI();
+      showToast(`${removed.name} dihapus.`);
+    }
+
+    function clearAllExtraObjects(silent = false) {
+      while (extraObjectsGroup.children.length > 0) {
+        extraObjectsGroup.remove(extraObjectsGroup.children[0]);
+      }
+      state.extraObjects = [];
+      state.selectedExtraId = null;
+      selectionRingMesh.visible = false;
+      document.getElementById('selected-object-panel').classList.add('hidden');
+      refreshExtraObjectsUI();
+      if (!silent) showToast('Semua objek tambahan dibersihkan.');
+    }
+
+    // =========================================================================
+    // 11. CINEMATIC TOUR 4 BABAK (OTOMATIS)
+    // =========================================================================
+    const TOUR_STAGES = [
+      {
+        end: 6.0,
+        tag: 'BABAK 1/4',
+        title: 'Bentuk Luar & Polaritas Anoda / Katoda',
+        subtitle: 'Dioda aksial terbungkus resin epoksi hitam pekat 100% solid dengan cincin perak di sisi kanan sebagai penanda kutub Katoda (−).'
+      },
+      {
+        end: 13.5,
+        tag: 'BABAK 2/4',
+        title: 'Belah Melintang & Rongga Kuningan PN',
+        subtitle: 'Selubung epoksi 135° terangkat membuka rongga dalam berlapis kuningan, menampakkan kristal Semikonduktor Tipe-P dan Tipe-N.'
+      },
+      {
+        end: 19.0,
+        tag: 'BABAK 3/4',
+        title: 'Simulasi Bias Maju (+ ke −) & Kontak Logam',
+        subtitle: 'Pada Bias Maju, lapisan deplesi menyempit sehingga pembawa muatan mengalir melintasi Sambungan PN menuju Kontak Logam Katoda.'
+      },
+      {
+        end: 24.0,
+        tag: 'BABAK 4/4',
+        title: 'Kembali ke Sudut Utama Studio',
+        subtitle: 'Menarik kamera kembali ke sudut pandang studio dan menyatukan kembali selubung enkapsulasi dioda.'
+      }
+    ];
+
+    function startOrResumeCinematicTour() {
+      if (state.tourState === 'idle') {
+        state.tourTime = 0;
+        setDissectMode('cutaway');
+        setExplodeTarget(0);
+        setBiasMode('neutral');
+      }
+      state.cameraAnim = null;
+      state.autoRotate = false;
+      updateAutoRotateButton();
+      state.tourState = 'playing';
+      updateTourUI();
+    }
+
+    function pauseCinematicTour(byUser = false) {
+      if (state.tourState !== 'playing') return;
+      state.tourState = 'paused';
+      updateTourUI();
+      if (byUser) showToast('Cinematic Tour dijeda (kontrol kamera manual aktif).');
+    }
+
+    function stopCinematicTour(resetView = false) {
+      state.tourState = 'idle';
+      state.tourTime = 0;
+      document.getElementById('tour-subtitle-box').classList.add('hidden');
+      updateTourUI();
+      if (resetView) {
+        setExplodeTarget(0);
+        setBiasMode('neutral');
+        animateCameraTo(INITIAL_CAM_POS, INITIAL_CAM_TARGET, 0.85);
+      }
+    }
+
+    function updateTourUI() {
+      const playText = document.getElementById('tour-play-text');
+      const statusBadge = document.getElementById('tour-status-badge');
+      const progressBar = document.getElementById('tour-progress-bar');
+
+      progressBar.style.width = `${Math.min(100, (state.tourTime / state.tourDuration) * 100)}%`;
+
+      if (state.tourState === 'playing') {
+        playText.textContent = 'Jeda Tur';
+        statusBadge.textContent = 'Berjalan';
+        statusBadge.className = 'text-[10px] font-medium px-2 py-0.5 rounded-full bg-sky-500/25 text-sky-300 border border-sky-400/35';
+      } else if (state.tourState === 'paused') {
+        playText.textContent = 'Lanjutkan';
+        statusBadge.textContent = 'Dijeda';
+        statusBadge.className = 'text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-500/25 text-amber-300 border border-amber-400/35';
+      } else {
+        playText.textContent = 'Mulai Tur';
+        statusBadge.textContent = 'Siap';
+        statusBadge.className = 'text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-white/10';
+      }
+    }
+
+    function stepCinematicTour(dt) {
+      if (state.tourState !== 'playing') return;
+
+      state.tourTime += dt;
+      const t = state.tourTime;
+      const subBox = document.getElementById('tour-subtitle-box');
+      subBox.classList.remove('hidden');
+
+      const stage = TOUR_STAGES.find((s) => t <= s.end) || TOUR_STAGES[3];
+      document.getElementById('tour-stage-tag').textContent = stage.tag;
+      document.getElementById('tour-stage-title').textContent = stage.title;
+      document.getElementById('tour-subtitle-text').textContent = stage.subtitle;
+
+      if (t <= 6.0) {
+        setExplodeTarget(0);
+        const u = t / 6.0;
+        const angle = -0.35 + u * 1.15;
+        const radius = 7.2 - Math.sin(u * Math.PI) * 0.55;
+        camera.position.set(Math.sin(angle) * radius, 2.2 + Math.sin(u * Math.PI) * 0.45, Math.cos(angle) * radius);
+        controls.target.set(0, 1.15, 0);
+      } else if (t <= 13.5) {
+        const u = (t - 6.0) / 7.5;
+        const smoothU = u * u * (3 - 2 * u);
+        setExplodeTarget(Math.min(1, u * 1.65));
+        camera.position.set(
+          THREE.MathUtils.lerp(4.1, -0.20, smoothU),
+          THREE.MathUtils.lerp(2.3, 1.62, smoothU),
+          THREE.MathUtils.lerp(5.7, 2.85, smoothU)
+        );
+        controls.target.set(0, 1.15, 0);
+      } else if (t <= 19.0) {
+        const u = (t - 13.5) / 5.5;
+        const smoothU = u * u * (3 - 2 * u);
+        setExplodeTarget(1.0);
+        if (state.diodeBias !== 'forward') {
+          setBiasMode('forward');
+        }
+        camera.position.set(
+          THREE.MathUtils.lerp(-0.20, 2.55, smoothU),
+          THREE.MathUtils.lerp(1.62, 1.75, smoothU),
+          THREE.MathUtils.lerp(2.85, 3.55, smoothU)
+        );
+        controls.target.set(THREE.MathUtils.lerp(0, 0.55, smoothU), 1.15, 0);
+      } else if (t <= 24.0) {
+        const u = (t - 19.0) / 5.0;
+        const smoothU = u * u * (3 - 2 * u);
+        if (state.diodeBias !== 'neutral') {
+          setBiasMode('neutral');
+        }
+        setExplodeTarget(Math.max(0, 1 - u * 1.35));
+        camera.position.lerpVectors(new THREE.Vector3(2.55, 1.75, 3.55), INITIAL_CAM_POS, smoothU);
+        controls.target.lerpVectors(new THREE.Vector3(0.55, 1.15, 0), INITIAL_CAM_TARGET, smoothU);
+      } else {
+        setExplodeTarget(0);
+        setBiasMode('neutral');
+        camera.position.copy(INITIAL_CAM_POS);
+        controls.target.copy(INITIAL_CAM_TARGET);
+        stopCinematicTour(false);
+        showToast('Cinematic Tour selesai.');
+      }
+
+      controls.update();
+      updateTourUI();
+    }
+
+    // =========================================================================
+    // 12. RAYCASTING KLIK 3D, SCREENSHOT PNG, RESET & EVENT LISTENERS
+    // =========================================================================
+    const raycaster = new THREE.Raycaster();
+    const pointerDownPos = new THREE.Vector2();
+    const pointerUpPos = new THREE.Vector2();
+
+    renderer.domElement.addEventListener('pointerdown', (e) => {
+      pointerDownPos.set(e.clientX, e.clientY);
+    });
+
+    renderer.domElement.addEventListener('pointerup', (e) => {
+      pointerUpPos.set(e.clientX, e.clientY);
+      if (pointerDownPos.distanceTo(pointerUpPos) > 6) return;
+
+      const rect = renderer.domElement.getBoundingClientRect();
+      const ndc = new THREE.Vector2(
+        ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        -((e.clientY - rect.top) / rect.height) * 2 + 1
+      );
+      raycaster.setFromCamera(ndc, camera);
+
+      const targets = [...diodeGroup.children, ...extraObjectsGroup.children];
+      const hits = raycaster.intersectObjects(targets, true);
+      if (hits.length > 0) {
+        const hitObj = hits[0].object;
+        if (hitObj.userData.partKey) {
+          selectAnatomyPart(hitObj.userData.partKey);
+        } else if (hitObj.userData.extraId) {
+          selectExtraObject(hitObj.userData.extraId);
+          switchControlTab('tab-objek');
+        }
+      }
+    });
+
+    function showToast(message) {
+      const tc = document.getElementById('toast-container');
+      const el = document.createElement('div');
+      el.className = 'glass-pill px-4 py-2 rounded-full text-xs font-medium text-slate-100 border border-white/15 shadow-xl transition-all duration-300 opacity-0 -translate-y-2';
+      el.textContent = message;
+      tc.appendChild(el);
+      requestAnimationFrame(() => el.classList.remove('opacity-0', '-translate-y-2'));
+      setTimeout(() => {
+        el.classList.add('opacity-0', '-translate-y-2');
+        setTimeout(() => el.remove(), 300);
+      }, 2400);
+    }
+
+    function captureHighResScreenshot() {
+      const prevRingVisible = selectionRingMesh.visible;
+      selectionRingMesh.visible = false;
+
+      renderer.render(scene, camera);
+      const dataURL = renderer.domElement.toDataURL('image/png');
+
+      selectionRingMesh.visible = prevRingVisible;
+
+      const flash = document.getElementById('camera-flash');
+      flash.style.opacity = '0.85';
+      setTimeout(() => { flash.style.opacity = '0'; }, 70);
+
+      const link = document.createElement('a');
+      link.download = 'dioda-3d-studio.png';
+      link.href = dataURL;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      showToast('Screenshot dioda-3d-studio.png berhasil diunduh!');
+    }
+
+    function setBiasMode(mode) {
+      state.diodeBias = mode;
+      const bNeu = document.getElementById('btn-bias-neutral');
+      const bFwd = document.getElementById('btn-bias-forward');
+      const bRev = document.getElementById('btn-bias-reverse');
+
+      bNeu.className = mode === 'neutral'
+        ? 'w-full btn-studio py-2.5 px-3 bg-white/15 text-white border border-white/30 text-[11px] justify-between'
+        : 'w-full btn-studio py-2.5 px-3 bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 text-[11px] justify-between';
+      bFwd.className = mode === 'forward'
+        ? 'w-full btn-studio py-2.5 px-3 bg-emerald-500/25 text-emerald-200 border border-emerald-400/45 text-[11px] justify-between'
+        : 'w-full btn-studio py-2.5 px-3 bg-white/5 hover:bg-emerald-500/15 text-slate-300 border border-white/10 text-[11px] justify-between';
+      bRev.className = mode === 'reverse'
+        ? 'w-full btn-studio py-2.5 px-3 bg-rose-500/25 text-rose-200 border border-rose-400/45 text-[11px] justify-between'
+        : 'w-full btn-studio py-2.5 px-3 bg-white/5 hover:bg-rose-500/15 text-slate-300 border border-white/10 text-[11px] justify-between';
+
+      updateDiodeSimulationVisuals();
+    }
+
+    function setSemiconductorMaterial(mat) {
+      state.diodeMaterial = mat;
+      const isSi = mat === 'si';
+      document.getElementById('btn-diode-si').className = isSi
+        ? 'btn-studio py-2.5 px-2.5 bg-sky-500/25 text-sky-200 border border-sky-400/45 text-[11px] flex-col items-start'
+        : 'btn-studio py-2.5 px-2.5 bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 text-[11px] flex-col items-start';
+      document.getElementById('btn-diode-ge').className = !isSi
+        ? 'btn-studio py-2.5 px-2.5 bg-cyan-500/25 text-cyan-200 border border-cyan-400/45 text-[11px] flex-col items-start'
+        : 'btn-studio py-2.5 px-2.5 bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 text-[11px] flex-col items-start';
+
+      updateDiodeSimulationVisuals();
+    }
+
+    function resetEverything() {
+      stopCinematicTour(false);
+      state.autoRotate = false;
+      updateAutoRotateButton();
+
+      setDissectMode('cutaway');
+      setExplodeTarget(0);
+      setSemiconductorMaterial('si');
+      setBiasMode('neutral');
+      clearAllExtraObjects(true);
+
+      state.selectedPart = null;
+      document.getElementById('part-info-card').classList.add('hidden');
+
+      state.labelsVisible = true;
+      document.getElementById('btn-labels-text').textContent = 'Label: ON';
+
+      animateCameraTo(INITIAL_CAM_POS, INITIAL_CAM_TARGET, 0.85);
+      showToast('Tampilan, bukaan struktur, bias, dan objek tambahan di-reset.');
+    }
+
+    function switchControlTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach((btn) => {
+        const active = btn.dataset.tab === tabId;
+        btn.className = active
+          ? 'tab-btn active py-2 px-1.5 rounded-xl text-[11px] font-semibold bg-sky-500/20 text-sky-300 border border-sky-400/35 transition'
+          : 'tab-btn py-2 px-1.5 rounded-xl text-[11px] font-semibold text-slate-400 hover:text-white transition';
+      });
+      document.querySelectorAll('.tab-content').forEach((pane) => {
+        pane.classList.toggle('hidden', pane.id !== tabId);
+      });
+    }
+
+    document.querySelectorAll('.tab-btn').forEach((btn) => {
+      btn.addEventListener('click', () => switchControlTab(btn.dataset.tab));
+    });
+
+    // Event Listener Struktur & Pemecahan
+    document.getElementById('mode-cutaway').addEventListener('click', () => setDissectMode('cutaway'));
+    document.getElementById('mode-exploded').addEventListener('click', () => setDissectMode('exploded'));
+    document.getElementById('slider-explode').addEventListener('input', (e) => {
+      if (state.tourState === 'playing') pauseCinematicTour(true);
+      setExplodeTarget(Number(e.target.value) / 100);
+    });
+    document.getElementById('btn-explode-0').addEventListener('click', () => {
+      if (state.tourState === 'playing') pauseCinematicTour(true);
+      setExplodeTarget(0.0);
+    });
+    document.getElementById('btn-explode-50').addEventListener('click', () => {
+      if (state.tourState === 'playing') pauseCinematicTour(true);
+      setExplodeTarget(0.5);
+    });
+    document.getElementById('btn-explode-100').addEventListener('click', () => {
+      if (state.tourState === 'playing') pauseCinematicTour(true);
+      setExplodeTarget(1.0);
+    });
+    document.getElementById('btn-quick-explode').addEventListener('click', () => {
+      if (state.tourState === 'playing') pauseCinematicTour(true);
+      setExplodeTarget(state.explodeTarget > 0.5 ? 0.0 : 1.0);
+    });
+    document.getElementById('btn-part-toggle-explode').addEventListener('click', () => {
+      setExplodeTarget(state.explodeTarget > 0.5 ? 0.0 : 1.0);
+    });
+    document.getElementById('btn-close-part-info').addEventListener('click', () => {
+      state.selectedPart = null;
+      document.getElementById('part-info-card').classList.add('hidden');
+    });
+
+    // Event Listener Simulasi Semikonduktor & Bias
+    document.getElementById('btn-diode-si').addEventListener('click', () => setSemiconductorMaterial('si'));
+    document.getElementById('btn-diode-ge').addEventListener('click', () => setSemiconductorMaterial('ge'));
+    document.getElementById('btn-bias-neutral').addEventListener('click', () => setBiasMode('neutral'));
+    document.getElementById('btn-bias-forward').addEventListener('click', () => {
+      if (state.explodeTarget < 0.75) setExplodeTarget(1.0);
+      setBiasMode('forward');
+    });
+    document.getElementById('btn-bias-reverse').addEventListener('click', () => {
+      if (state.explodeTarget < 0.75) setExplodeTarget(1.0);
+      setBiasMode('reverse');
+    });
+
+    // Event Listener Cinematic Tour
+    document.getElementById('btn-tour-play').addEventListener('click', () => {
+      if (state.tourState === 'playing') pauseCinematicTour(false);
+      else startOrResumeCinematicTour();
+    });
+    document.getElementById('btn-tour-stop').addEventListener('click', () => stopCinematicTour(true));
+
+    // Event Listener Kamera
+    function updateAutoRotateButton() {
+      controls.autoRotate = state.autoRotate;
+      controls.autoRotateSpeed = 1.8;
+      const btn = document.getElementById('btn-autorotate');
+      btn.textContent = `Auto-Rotasi: ${state.autoRotate ? 'ON' : 'OFF'}`;
+      btn.className = state.autoRotate
+        ? 'btn-studio px-2.5 py-1 text-[11px] bg-sky-500/25 text-sky-300 border border-sky-400/40'
+        : 'btn-studio px-2.5 py-1 text-[11px] bg-white/10 hover:bg-white/15 text-slate-300 border border-white/10';
+    }
+    document.getElementById('btn-autorotate').addEventListener('click', () => {
+      if (state.tourState === 'playing') pauseCinematicTour(true);
+      state.autoRotate = !state.autoRotate;
+      updateAutoRotateButton();
+    });
+
+    function orbitCameraBy(dTheta, dPhi) {
+      if (state.tourState === 'playing') pauseCinematicTour(true);
+      state.cameraAnim = null;
+      const offset = camera.position.clone().sub(controls.target);
+      const spherical = new THREE.Spherical().setFromVector3(offset);
+      spherical.theta += dTheta;
+      spherical.phi = Math.max(0.18, Math.min(Math.PI * 0.48, spherical.phi + dPhi));
+      offset.setFromSpherical(spherical);
+      camera.position.copy(controls.target).add(offset);
+      controls.update();
+    }
+
+    function zoomCameraBy(factor) {
+      if (state.tourState === 'playing') pauseCinematicTour(true);
+      state.cameraAnim = null;
+      const offset = camera.position.clone().sub(controls.target);
+      const newLen = Math.max(controls.minDistance, Math.min(controls.maxDistance, offset.length() * factor));
+      offset.setLength(newLen);
+      camera.position.copy(controls.target).add(offset);
+      controls.update();
+    }
+
+    document.getElementById('cam-left').addEventListener('click', () => orbitCameraBy(-0.28, 0));
+    document.getElementById('cam-right').addEventListener('click', () => orbitCameraBy(0.28, 0));
+    document.getElementById('cam-up').addEventListener('click', () => orbitCameraBy(0, -0.22));
+    document.getElementById('cam-down').addEventListener('click', () => orbitCameraBy(0, 0.22));
+    document.getElementById('cam-center').addEventListener('click', () => animateCameraTo(INITIAL_CAM_POS, INITIAL_CAM_TARGET, 0.7));
+    document.getElementById('cam-zoom-in').addEventListener('click', () => zoomCameraBy(0.82));
+    document.getElementById('cam-zoom-out').addEventListener('click', () => zoomCameraBy(1.22));
+
+    document.getElementById('preset-iso').addEventListener('click', () => {
+      if (state.tourState === 'playing') pauseCinematicTour(true);
+      animateCameraTo(new THREE.Vector3(4.5, 3.5, 5.4), INITIAL_CAM_TARGET, 0.85);
+    });
+    document.getElementById('preset-front').addEventListener('click', () => {
+      if (state.tourState === 'playing') pauseCinematicTour(true);
+      animateCameraTo(new THREE.Vector3(0, 1.35, 7.2), INITIAL_CAM_TARGET, 0.85);
+    });
+    document.getElementById('preset-closeup').addEventListener('click', () => {
+      if (state.tourState === 'playing') pauseCinematicTour(true);
+      if (state.explodeTarget < 0.8) setExplodeTarget(1.0);
+      animateCameraTo(new THREE.Vector3(-0.12, 1.52, 2.75), new THREE.Vector3(0, 1.15, 0), 0.9);
+    });
+    document.getElementById('preset-side').addEventListener('click', () => {
+      if (state.tourState === 'playing') pauseCinematicTour(true);
+      animateCameraTo(new THREE.Vector3(7.5, 1.55, 0.0), INITIAL_CAM_TARGET, 0.85);
+    });
+    document.getElementById('preset-top').addEventListener('click', () => {
+      if (state.tourState === 'playing') pauseCinematicTour(true);
+      animateCameraTo(new THREE.Vector3(0.0, 8.2, 0.65), INITIAL_CAM_TARGET, 0.85);
+    });
+
+    // Event Listener Tambah Objek
+    document.querySelectorAll('.spawn-btn').forEach((btn) => {
+      btn.addEventListener('click', () => spawnExtraObject(btn.dataset.spawn));
+    });
+    document.getElementById('select-extra-object').addEventListener('change', (e) => selectExtraObject(e.target.value));
+    document.getElementById('slider-obj-x').addEventListener('input', (e) => {
+      const item = state.extraObjects.find((o) => o.id === state.selectedExtraId);
+      if (!item) return;
+      const v = Number(e.target.value);
+      item.mesh.position.x = v; selectionRingMesh.position.x = v;
+      document.getElementById('obj-pos-x-val').textContent = v.toFixed(1);
+    });
+    document.getElementById('slider-obj-z').addEventListener('input', (e) => {
+      const item = state.extraObjects.find((o) => o.id === state.selectedExtraId);
+      if (!item) return;
+      const v = Number(e.target.value);
+      item.mesh.position.z = v; selectionRingMesh.position.z = v;
+      document.getElementById('obj-pos-z-val').textContent = v.toFixed(1);
+    });
+    document.getElementById('slider-obj-rot').addEventListener('input', (e) => {
+      const item = state.extraObjects.find((o) => o.id === state.selectedExtraId);
+      if (!item) return;
+      const deg = Number(e.target.value);
+      item.mesh.rotation.y = THREE.MathUtils.degToRad(deg);
+      document.getElementById('obj-rot-y-val').textContent = `${deg}°`;
+    });
+    document.getElementById('btn-delete-selected').addEventListener('click', removeSelectedExtraObject);
+    document.getElementById('btn-clear-objects').addEventListener('click', () => clearAllExtraObjects(false));
+
+    // Tombol Bar Atas
+    document.getElementById('btn-toggle-labels').addEventListener('click', () => {
+      state.labelsVisible = !state.labelsVisible;
+      document.getElementById('btn-labels-text').textContent = `Label: ${state.labelsVisible ? 'ON' : 'OFF'}`;
+    });
+    document.getElementById('btn-screenshot').addEventListener('click', captureHighResScreenshot);
+    document.getElementById('btn-reset').addEventListener('click', resetEverything);
+
+    const drawerEl = document.getElementById('control-drawer');
+    document.getElementById('btn-toggle-drawer').addEventListener('click', () => {
+      drawerEl.classList.toggle('collapsed');
+    });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    });
+
+    // =========================================================================
+    // 13. INISIALISASI AWAL & LOOP ANIMASI UTAMA
+    // =========================================================================
+    initAnatomyShortcuts();
+    updateDiodeSimulationVisuals();
+
+    if (window.innerWidth < 768) {
+      drawerEl.classList.add('collapsed');
+    }
+
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const dt = Math.min(clock.getDelta(), 0.05);
+      const elapsedTime = clock.elapsedTime;
+
+      updateDissectionKinematics(dt);
+      stepDiodeBiasAnimation(elapsedTime);
+
+      if (state.tourState === 'playing') {
+        stepCinematicTour(dt);
+      } else if (state.cameraAnim) {
+        const anim = state.cameraAnim;
+        anim.elapsed += dt;
+        const rawT = Math.min(1, anim.elapsed / anim.duration);
+        const easeT = 1 - Math.pow(1 - rawT, 3);
+        camera.position.lerpVectors(anim.startPos, anim.endPos, easeT);
+        controls.target.lerpVectors(anim.startTarget, anim.endTarget, easeT);
+        if (rawT >= 1) state.cameraAnim = null;
+      }
+
+      if (selectionRingMesh.visible) {
+        selectionRingMesh.rotation.z += dt * 0.9;
+      }
+
+      controls.update();
+      updateAnnotationsProjection();
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('load', () => {
+      animate();
+    });
+  </script>
+</body>
+</html>

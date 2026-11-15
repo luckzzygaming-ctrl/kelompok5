@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ElektroLab - Media Pembelajaran Teknik Elektronika</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#f2f5fa">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="icon" href="assets/icons/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+<script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<style>
+:root{--bg:#f2f5fa;--surf:#fff;--ink:#14213d;--mut:#55657f;--line:#dbe3ef;--ac:#2f5bff;--acd:#2347d6;--soft:#e8eeff;--amber:#ffb020;--ok:#13795b;--warn:#955a00;--bad:#d03038}
+*{box-sizing:border-box}
+html{scroll-padding-top:70px}
+body{margin:0;font-family:'DM Sans',system-ui,sans-serif;color:var(--ink);line-height:1.6;background-color:var(--bg);
+ background-image:linear-gradient(#e5ebf5 1px,transparent 1px),linear-gradient(90deg,#e5ebf5 1px,transparent 1px);background-size:32px 32px;padding-bottom:84px}
+h1,h2,h3{font-family:'Bricolage Grotesque','DM Sans',system-ui,sans-serif;line-height:1.15;margin:0 0 .4em;letter-spacing:-.01em}
+h1{font-size:clamp(2rem,5.5vw,3.4rem);font-weight:800}
+h2{font-size:1.5rem;margin-top:1.6em}
+h3{font-size:1.15rem}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+.top{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center;padding:12px max(16px,calc(50% - 460px));background:rgba(255,255,255,.88);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:1.2rem;text-decoration:none}
+.brand i{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:var(--ac)}
+.brand svg{width:18px;fill:#ffd23f}
+.links{display:flex;gap:4px}
+.links a,.tabs a{text-decoration:none;color:var(--mut);font-weight:600;padding:8px 14px;border-radius:10px}
+.links a.on{background:var(--soft);color:var(--acd)}
+.tabs{display:none}
+main{max-width:920px;margin:0 auto;padding:28px 16px}
+.lead{font-size:1.1rem;color:var(--mut);max-width:60ch}
+.ph{margin-top:.2em}
+.crumb{display:inline-block;color:var(--acd);font-weight:600;text-decoration:none;margin-bottom:6px}
+.crumb::before{content:"‹ "}
+.card{background:var(--surf);border:1px solid var(--line);border-radius:16px;padding:18px}
+.prose{max-width:68ch}.prose p{margin:.4em 0 .8em}
+.row{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0}.row.end{justify-content:space-between}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1.5px solid var(--ink);background:var(--surf);color:var(--ink);border-radius:12px;padding:10px 18px;font:600 1rem 'DM Sans',sans-serif;text-decoration:none;cursor:pointer;transition:transform .12s,background .12s}
+.btn:hover{background:var(--soft)}.btn:active{transform:translateY(1px)}
+.btn.p{background:var(--ac);border-color:var(--ac);color:#fff}.btn.p:hover{background:var(--acd)}
+.btn.sm{padding:6px 14px;font-size:.9rem}
+.chip{display:inline-block;background:var(--soft);color:var(--acd);border-radius:99px;padding:3px 12px;font-size:.82rem;font-weight:600}
+/* beranda */
+.hero{display:grid;gap:24px;align-items:center;grid-template-columns:1.1fr 1fr;padding:20px 0 8px}
+.hero-3d{position:relative;background:linear-gradient(160deg,#dfe7ff,#f7f9ff);border:1px solid var(--line);border-radius:28px;overflow:hidden}
+.hero-3d model-viewer{width:100%;height:340px;background:transparent}
+.hero-3d .chip{position:absolute;left:14px;bottom:14px;background:#fff}
+.flow{display:grid;gap:12px;grid-template-columns:repeat(3,1fr);margin-top:26px;counter-reset:s;list-style:none;padding:0}
+.flow li{counter-increment:s;background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:14px}
+.flow li::before{content:counter(s);display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--ink);color:#fff;font-weight:700;margin-bottom:8px}
+.flow b{display:block}.flow span{color:var(--mut);font-size:.92rem}
+/* materi */
+.mgrid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));margin:20px 0}
+.mcard{display:block;text-decoration:none;background:var(--surf);border:1px solid var(--line);border-radius:20px;padding:16px;transition:border-color .15s,transform .15s}
+.mcard:hover{border-color:var(--ac);transform:translateY(-2px)}
+.tile{background:var(--soft);border-radius:14px;padding:14px;margin-bottom:14px}
+.tile svg,.symtile svg{width:100%;height:56px;fill:none;stroke:var(--acd);stroke-width:2.6;stroke-linejoin:round;stroke-linecap:round}
+.banner{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center;background:var(--ink);color:#fff;border-radius:20px;padding:20px 22px}
+.banner h3{margin:0}.banner p{margin:.2em 0 0;color:#c4cee3}
+.banner .btn{border-color:#fff}
+.stack{display:grid;gap:10px}
+.row-card{display:flex;justify-content:space-between;align-items:center;gap:12px;text-decoration:none;background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.row-card:hover{border-color:var(--ac)}.row-card b{display:block}.row-card span:not(.btn){color:var(--mut);font-size:.95rem}
+.symgrid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin:18px 0}
+.symtile{background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:14px;text-align:center}
+.steps{counter-reset:n;list-style:none;padding:0;display:grid;gap:10px;max-width:68ch}
+.steps li{counter-increment:n;display:flex;gap:12px;background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:14px}
+.steps li::before{content:counter(n);flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--ac);color:#fff;font-weight:700}
+/* simulasi */
+.sim-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}
+.dots{display:flex;gap:8px;padding-top:14px}
+.dot{width:12px;height:12px;border-radius:50%;background:var(--line)}.dot.on{background:var(--ac);width:28px;border-radius:99px}
+.simgrid{display:grid;gap:16px;grid-template-columns:1.25fr 1fr;align-items:start;margin-top:14px}
+.model{padding:10px;position:sticky;top:76px}
+model-viewer{width:100%;height:380px;border-radius:12px;background:linear-gradient(160deg,#e6ecff,#f8faff);--poster-color:transparent}
+.panel h3{margin-bottom:10px}
+select,input[type=range]{width:100%;margin:6px 0 14px}
+input[type=range]{accent-color:var(--ac)}
+select{padding:10px;background:#fff;color:var(--ink);border:1.5px solid var(--line);border-radius:10px;font:inherit}
+label{display:block;color:var(--ink);font-weight:600;font-size:.95rem}
+label b{color:var(--acd)}
+.readout{border-top:1px solid var(--line);margin-top:6px;padding-top:12px}
+.lamp{width:44px;height:44px;border-radius:50%;margin:0 0 10px;border:2px solid var(--line);background:color-mix(in srgb,#ffb020 calc(var(--l)*100%),#e3e9f3);box-shadow:0 0 calc(var(--l)*26px) calc(var(--l)*8px) rgba(255,176,32,var(--l))}
+.note{font-size:.88rem;color:var(--mut)}
+.ok{color:var(--ok);font-weight:600}.warn{color:var(--warn);font-weight:600}.bad{color:var(--bad);font-weight:600}
+.hs{background:var(--ink);color:#fff;border:0;border-radius:8px;padding:3px 9px;font:600 11px 'DM Sans',sans-serif;pointer-events:none;white-space:nowrap}
+/* evaluasi */
+#gamebox{width:100%;max-width:800px;margin:14px auto;border-radius:18px;overflow:hidden;border:3px solid var(--ink)}
+.pad{display:flex;justify-content:center;gap:14px;margin:10px}
+.pad button{width:76px;height:60px;font-size:24px;border-radius:14px;border:1.5px solid var(--ink);background:#fff;color:var(--ink);touch-action:none}
+.pad button:active{background:var(--soft)}
+#res{margin:12px auto;max-width:800px}
+@media(max-width:760px){
+ .hero,.simgrid,.flow{grid-template-columns:1fr}
+ .links{display:none}.model{position:static}model-viewer{height:300px}.hero-3d model-viewer{height:260px}
+ .tabs{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:20;background:#fff;border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));justify-content:space-around}
+ .tabs a{flex:1;text-align:center;padding:10px 4px}.tabs a.on{background:var(--soft);color:var(--acd)}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top"><a class="brand" href="#home"><i><svg viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></i>ElektroLab</a><nav class="links"><a href="#home" data-k="home">Beranda</a><a href="#materi" data-k="materi">Materi</a><a href="#eval" data-k="eval">Evaluasi</a></nav></header>
+<main id="app"></main>
+<nav class="tabs"><a href="#home" data-k="home">Beranda</a><a href="#materi" data-k="materi">Materi</a><a href="#eval" data-k="eval">Evaluasi</a></nav>
+
+<script>
+const $ = s => document.querySelector(s), app = $('#app');
+const T = {l:0, r:0, j:0};
+let game = null;
+
+/* ---------- DATA ---------- */
+const COL = [['Hitam','#000'],['Coklat','#8b4513'],['Merah','#e00'],['Oranye','#f80'],['Kuning','#fd0'],['Hijau','#0a0'],['Biru','#06f'],['Ungu','#80f'],['Abu-abu','#888'],['Putih','#fff']];
+const fmt = r => r >= 1e6 ? (r/1e6)+' MΩ' : r >= 1e3 ? (r/1e3)+' kΩ' : r+' Ω';
+const E12 = [1,1.2,1.5,1.8,2.2,2.7,3.3,3.9,4.7,5.6,6.8,8.2,10];
+const DEMO = 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'; // cadangan jika model .glb belum ada
+
+const MAT = {
+  m1:{t:'Resistor & Hukum Ohm', s:['m1-s','m1-o'], b:`<p>Resistor adalah komponen pasif yang menghambat arus listrik. Satuannya <b>Ohm (Ω)</b>. Nilainya dibaca dari gelang warna.</p>
+    <p><b>Hukum Ohm:</b> V = I × R, sehingga I = V / R. Tegangan (V) dalam Volt, arus (I) dalam Ampere.</p>
+    <p><b>Fungsi resistor:</b> membatasi arus agar komponen lain (misalnya LED) tidak rusak, dan membagi tegangan pada rangkaian.</p>`},
+  m2:{t:'Dioda', s:['m2-s','m2-o'], b:`<p>Dioda hanya melewatkan arus satu arah (dari <b>anoda</b> ke <b>katoda</b>). Dioda silikon mulai konduksi pada sekitar 0,7 V.</p>
+    <p>Saat dipasang <b>bias maju</b> (anoda ke positif), dioda menghantar. Saat <b>bias mundur</b>, dioda menahan arus.</p>`},
+  m3:{t:'Transistor sebagai Saklar', s:['m3-s','m3-o'], b:`<p>Transistor NPN punya tiga kaki: <b>Basis (B)</b>, <b>Kolektor (C)</b>, <b>Emitor (E)</b>. Arus kecil di basis mengendalikan arus besar di kolektor.</p>
+    <p>Saat Vbe &lt; 0,6 V transistor <b>cutoff</b> (saklar OFF). Saat Vbe ≥ 0,6 V dan arus basis cukup, transistor <b>saturasi</b> (saklar ON). Penguatan arus: IC = hFE × IB.</p>`},
+  m4:{t:'Sign / Simbol Komponen', s:[], b:''}
+};
+const SYMS = [
+  ['Resistor','<path d="M0 20h15l5-10 10 20 10-20 10 20 5-10h25"/>'],
+  ['Kapasitor','<path d="M0 20h36M36 6v28M48 6v28M48 20h40"/>'],
+  ['Dioda','<path d="M0 20h28M28 8v24l20-12zM48 8v24M48 20h40"/>'],
+  ['LED','<path d="M0 20h28M28 8v24l20-12zM48 8v24M48 20h40M52 8l10-8M58 16l10-8"/>'],
+  ['Baterai','<path d="M0 20h34M34 8v24M46 14v12M46 20h42"/>'],
+  ['Ground','<path d="M44 0v18M28 18h32M34 25h20M39 32h10"/>'],
+  ['Transistor NPN','<path d="M0 20h30M30 8v24M30 14l30-12M30 26l30 12"/>']
+];
+
+const sel = (arr, f) => arr.map(i => [i, f(i)]);
+const SIM = {
+ 'm1-s':{t:'Simulasi 1: Resistor 3D Studio', studio:'assets/resistor-studio.html', d:'Studio 3D interaktif: lihat anatomi dan struktur dalam resistor. Putar, perbesar, dan pecahkan strukturnya.'},
+ 'm1-o':{t:'Simulasi 2: Lab Ohm 3D dengan AR', studio:'assets/ohm-lab-ar.html', d:'Rangkaian baterai, resistor, dan lampu dengan Hukum Ohm (V = I × R). Tekan tombol AR agar rangkaian muncul lewat kamera HP Anda.'},
+ 'm2-s':{t:'Simulasi 1: Dioda 3D Studio', studio:'assets/dioda-studio.html', d:'Studio 3D interaktif: lihat anatomi dan cara kerja dioda. Putar, perbesar, dan amati strukturnya.'},
+ 'm2-o':{t:'Simulasi 2: Dioda 3D, Bias Maju, Bias Mundur dan Penyearah', studio:'assets/dioda-bias.html', d:'Rangkaian dioda 3D dengan bias maju dan bias mundur, serta fungsi dioda sebagai penyearah. Ubah kondisi dan amati arus yang mengalir.'},
+ 'm3-s':{t:'Simulasi 1: Transistor 3D Studio', studio:'assets/transistor-studio.html', d:'Studio 3D interaktif: lihat anatomi dan cara kerja transistor. Putar, perbesar, dan amati strukturnya.'},
+ 'm3-o':{t:'Simulasi 2: Transistor sebagai Saklar 3D', studio:'assets/transistor-saklar.html', d:'Rangkaian transistor NPN 3D sebagai saklar. Nyalakan saklar input, amati kondisi cutoff dan saturasi, serta arus basis dan kolektor.'}
+};
+
+const Q = [
+ {q:'Satuan hambatan listrik adalah...',o:['Ohm','Volt','Watt']},
+ {q:'Rumus Hukum Ohm yang benar adalah...',o:['I = V / R','I = V × R','I = R / V']},
+ {q:'Gelang Coklat-Hitam-Merah bernilai...',o:['1 kΩ','10 Ω','200 Ω']},
+ {q:'Dioda konduksi pada kondisi...',o:['Bias maju','Bias mundur','Tanpa tegangan']},
+ {q:'Fungsi resistor pada rangkaian LED adalah...',o:['Membatasi arus','Menaikkan tegangan','Menyimpan muatan']},
+ {q:'Tiga kaki transistor NPN adalah...',o:['Basis, Kolektor, Emitor','Anoda, Katoda, Gate','Input, Output, Ground']},
+ {q:'Transistor cutoff berarti saklar...',o:['OFF','ON','Rusak']},
+ {q:'Simbol dua garis sejajar adalah komponen...',o:['Kapasitor','Resistor','Dioda']},
+ {q:'Komponen yang hambatannya berubah menurut cahaya adalah...',o:['LDR','Dioda','Kapasitor']},
+ {q:'Pada dioda, arus mengalir dari...',o:['Anoda ke katoda','Katoda ke anoda','Basis ke emitor']},
+ {q:'Transistor saturasi sama seperti saklar...',o:['Tertutup (ON)','Terbuka (OFF)','Putus']},
+ {q:'Arus kolektor transistor dihitung dengan...',o:['IC = hFE × IB','IC = V / R','IC = IB / hFE']}
+];
+
+/* ---------- HALAMAN ---------- */
+const nav = (h,t,c='') => `<a class="btn ${c}" href="#${h}">${t}</a>`;
+const SVG = k => `<svg viewBox="0 0 90 40" aria-hidden="true">${SYMS[k][1]}</svg>`;
+const ICON = {m1:0, m2:3, m3:6, m4:5};
+const pages = {
+ home:()=>`<section class="hero">
+   <div><h1>Belajar elektronika lewat rangkaian 3D</h1>
+   <p class="lead">Putar komponennya, ubah nilainya, dan lihat hasilnya langsung. Setelah itu, uji pemahamanmu lewat game.</p>
+   <div class="row">${nav('materi','Mulai belajar','p')}${nav('direction','Petunjuk')}${nav('about','Tentang program')}</div></div>
+   <div class="hero-3d"><model-viewer src="assets/models/resistor.glb" camera-controls auto-rotate interaction-prompt="none" shadow-intensity="1" camera-orbit="30deg 70deg auto" alt="Resistor 3D"></model-viewer><span class="chip">Seret untuk memutar</span></div>
+ </section>
+ <ol class="flow"><li><b>Baca materi</b><span>Penjelasan singkat tiap komponen.</span></li><li><b>Coba simulasi</b><span>Ubah nilai, lihat rangkaian 3D bereaksi.</span></li><li><b>Kerjakan evaluasi</b><span>Game arcade untuk menguji pemahaman.</span></li></ol>`,
+ about:()=>`<a class="crumb" href="#home">Beranda</a><h1 class="ph">Tentang program</h1>
+   <div class="card prose"><p>ElektroLab membantu siswa memahami dasar elektronika: resistor, dioda, LED, dan transistor. Belajarnya lewat materi, simulasi rangkaian 3D (bisa dilihat dengan AR), dan evaluasi berbentuk game arcade.</p>
+   <p class="note">Isi nama pengembang, institusi, dan kompetensi dasar di bagian ini.</p></div>
+   <div class="row">${nav('materi','Mulai belajar','p')}</div>`,
+ direction:()=>`<a class="crumb" href="#home">Beranda</a><h1 class="ph">Petunjuk penggunaan</h1>
+   <ol class="steps"><li><span>Pilih satu materi di menu Materi.</span></li><li><span>Baca penjelasannya, lalu buka Simulasi 1, 2, dan seterusnya.</span></li><li><span>Geser kontrol untuk mengubah rangkaian. Tekan <b>Lihat dalam AR</b> untuk menaruh model 3D di meja atau lantai (HP Android atau iOS).</span></li><li><span>Setelah selesai, kerjakan Evaluasi: lompat dan tabrak blok jawaban dari bawah.</span></li></ol>
+   <div class="row">${nav('materi','Mulai belajar','p')}</div>`,
+ materi:()=>`<h1 class="ph">Materi</h1><p class="lead">Pilih satu materi. Tiap materi berisi penjelasan singkat dan simulasi rangkaian 3D.</p>
+   <div class="mgrid">${Object.entries(MAT).map(([k,m])=>`<a class="mcard" href="#${k}"><div class="tile">${SVG(ICON[k])}</div><h3>${m.t}</h3><span class="chip">${m.s.length?m.s.length+' simulasi':'Daftar simbol'}</span></a>`).join('')}</div>
+   <div class="banner"><div><h3>Evaluasi</h3><p>Lompat dan tabrak blok jawaban yang benar.</p></div>${nav('eval','Mulai evaluasi','p')}</div>`,
+ close:()=>`<h1 class="ph">Terima kasih</h1><p class="lead">Kamu sudah menyelesaikan semua materi. Uji pemahamanmu di evaluasi, atau ulangi materi kapan saja.</p>
+   <div class="row">${nav('eval','Kerjakan evaluasi','p')}${nav('materi','Ulangi materi')}<button class="btn" onclick="window.close()">Tutup aplikasi</button></div>`,
+ eval:()=>`<a class="crumb" href="#materi">Materi</a><h1 class="ph">Evaluasi: Elektro Run</h1><p class="lead">Lari ke kanan, kumpulkan koin, injak serangga korslet, dan tabrak blok jawaban yang benar dari bawah. Awas jurang. Nyawamu 3.</p>
+   <div id="gamebox"></div>
+   <div class="pad"><button id="bl" aria-label="Kiri">◀</button><button id="bj" aria-label="Lompat">⤒</button><button id="br" aria-label="Kanan">▶</button></div>
+   <div id="res" class="card" hidden></div>`
+};
+
+function matPage(k){
+  const m = MAT[k];
+  const sims = m.s.map((id,i)=>`<a class="row-card" href="#${id}"><div><b>Simulasi ${i+1}</b><span>${SIM[id].t.replace(/^Simulasi \d+: /,'')}</span></div><span class="btn p sm">Buka</span></a>`).join('');
+  const body = k==='m4'
+    ? `<div class="symgrid">${SYMS.map(s=>`<div class="symtile"><svg viewBox="0 0 90 40">${s[1]}</svg><b>${s[0]}</b></div>`).join('')}</div><div class="row">${nav('close','Selesai','p')}</div>`
+    : `<div class="card prose">${m.b}</div><h2>Simulasi</h2><div class="stack">${sims}</div>`;
+  return `<a class="crumb" href="#materi">Materi</a><h1 class="ph">${m.t}</h1>${body}`;
+}
+
+function simPage(h){
+  const s = SIM[h], m = h.split('-')[0], list = MAT[m].s, i = list.indexOf(h);
+  const prev = i>0 ? list[i-1] : m, next = list[i+1];
+  const dots = list.map((id,j)=>`<a class="dot${j===i?' on':''}" href="#${id}" aria-label="Simulasi ${j+1}"></a>`).join('');
+  return `<a class="crumb" href="#${m}">${MAT[m].t}</a>
+  <div class="sim-head"><div><h1 class="ph" style="font-size:clamp(1.6rem,4vw,2.4rem)">${s.t}</h1><p class="lead">${s.d}</p></div><div class="dots" title="Simulasi ${i+1} dari ${list.length}">${dots}</div></div>
+  ${s.studio?`<div class="card" style="padding:0;overflow:hidden;margin-top:14px"><iframe src="${s.studio}" title="${s.t}" allow="fullscreen; camera; gyroscope; accelerometer; magnetometer" style="display:block;width:100%;height:min(78vh,720px);min-height:460px;border:0;background:#0b0e14"></iframe></div><p class="note" style="margin:8px 4px"><a href="${s.studio}" target="_blank" rel="noopener">Buka layar penuh di tab baru</a> (disarankan di HP, terutama untuk AR kamera).</p>`:`<div class="simgrid">
+    <div class="card model"><model-viewer id="mv" src="assets/models/${s.model}.glb" ar ar-modes="webxr scene-viewer quick-look" camera-controls auto-rotate ${s.cam?`camera-orbit="${s.cam}"`:''} shadow-intensity="1" alt="Model 3D ${s.model}">
+      <button slot="ar-button" class="btn p" style="position:absolute;bottom:12px;left:12px">Lihat dalam AR</button>${(s.hot||[]).map((h,i)=>`<button class="hs" slot="hotspot-${i}" data-position="${h[1]}" data-normal="0 1 0">${h[0]}</button>`).join('')}</model-viewer>
+      <p class="note" id="mvnote"></p></div>
+    <div class="card panel"><h3>Kontrol</h3><div id="ctl"></div><div class="readout"><div id="lamp" class="lamp" style="--l:0"></div><div id="out"></div></div></div>
+  </div>`}
+  <div class="row end">${nav(prev,'Sebelumnya')}${next?nav(next,'Selanjutnya','p'):nav(m,'Selesai','p')}</div>`;
+}
+
+function initSim(h){
+  const s = SIM[h], els = {};
+  let last = []; isDemo = false;
+  s.c.forEach(c=>{
+    const w = document.createElement('label');
+    w.innerHTML = c.o
+      ? `${c.l}<select>${c.o.map(([a,b])=>`<option value="${a}"${a==c.v?' selected':''}>${b}</option>`).join('')}</select>`
+      : `${c.l}: <b></b><input type="range" min="${c.min}" max="${c.max}" step="${c.step}" value="${c.v}">`;
+    $('#ctl').appendChild(w);
+    els[c.id] = w;
+    w.firstElementChild && w.querySelector('select,input').addEventListener('input', upd);
+  });
+  function upd(){
+    const v = {};
+    s.c.forEach(c=>{const e = els[c.id].querySelector('select,input'); v[c.id] = parseFloat(e.value); const b = els[c.id].querySelector('b'); if(b) b.textContent = e.value;});
+    const r = s.f(v);
+    $('#out').innerHTML = r.h;
+    $('#lamp').style.display = r.lit===null ? 'none' : '';
+    if(r.lit!==null) $('#lamp').style.setProperty('--l', r.lit);
+    last = s.g ? s.g(v,r) : [];
+    paint(last);
+  }
+  upd();
+  $('#mv').addEventListener('load', ()=>paint(last));
+  $('#mv').addEventListener('error', ()=>{ isDemo = true; $('#mv').src = DEMO; $('#mvnote').textContent = 'Model assets/models/'+s.model+'.glb belum ada, sementara memakai model contoh. Ganti dengan model 3D Anda.'; }, {once:true});
+}
+
+/* ---------- GAME EVALUASI: Elektro Run (Phaser) ---------- */
+let AC = null, muted = false;
+function sfx(n){
+  if(muted) return;
+  try{
+    AC = AC || new (window.AudioContext||window.webkitAudioContext)();
+    const P = {jump:[[380,720,.12,'square']], coin:[[900,1350,.1,'square']], stomp:[[320,110,.14,'sawtooth']],
+      hurt:[[240,70,.3,'sawtooth']], ok:[[523,659,.1,'square'],[784,1046,.22,'square']], bad:[[260,100,.4,'sawtooth']],
+      win:[[523,523,.12,'square'],[659,659,.12,'square'],[784,784,.12,'square'],[1046,1046,.35,'square']]}[n];
+    let t = AC.currentTime;
+    P.forEach(([a,b,d,w])=>{ const o=AC.createOscillator(), g=AC.createGain(); o.type=w;
+      o.frequency.setValueAtTime(a,t); o.frequency.exponentialRampToValueAtTime(b,t+d);
+      g.gain.setValueAtTime(.07,t); g.gain.exponentialRampToValueAtTime(.001,t+d);
+      o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+d); t += d*.9; });
+  }catch(e){}
+}
+
+/* ---------- MUSIK LATAR (sintesis WebAudio, komposisi orisinal) ---------- */
+const MUS = {on:false, timer:null, next:0, step:0, master:null, nb:null, d:.2};
+const MEL = [ // 8 bar x 8 not (MIDI, 0 = diam): C - Am - F - G, lalu variasi
+  [76,0,79,0,84,0,79,76],[81,0,79,0,76,0,72,0],[77,0,81,0,84,0,81,77],[83,0,79,0,74,0,79,83],
+  [84,0,83,81,79,0,76,79],[81,0,79,76,72,0,76,0],[77,79,81,0,84,0,81,77],[79,0,74,0,67,0,0,0]];
+const ROOT = [36,33,41,43,36,33,41,43];
+function mNote(m,t,d,type,vol){
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.value = 440*2**((m-69)/12);
+  g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.001,t+d);
+  o.connect(g); g.connect(MUS.master); o.start(t); o.stop(t+d);
+}
+function mNoise(t,d,vol,hp){
+  if(!MUS.nb){ MUS.nb = AC.createBuffer(1,AC.sampleRate*.3,AC.sampleRate); const a = MUS.nb.getChannelData(0); for(let i=0;i<a.length;i++) a[i]=Math.random()*2-1; }
+  const src = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain();
+  src.buffer = MUS.nb; f.type = 'highpass'; f.frequency.value = hp;
+  g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.001,t+d);
+  src.connect(f); f.connect(g); g.connect(MUS.master); src.start(t); src.stop(t+d);
+}
+function mStep(i,t){
+  const bar = Math.floor(i/8), s = i%8, d = MUS.d;
+  if(MEL[bar][s]) mNote(MEL[bar][s], t, d*.85, 'square', .028);
+  if(s%2===0) mNote(s%4===0 ? ROOT[bar] : ROOT[bar]+12, t, d*1.6, 'triangle', .09);
+  if(s%4===0){ const o = AC.createOscillator(), g = AC.createGain();           // kick
+    o.frequency.setValueAtTime(150,t); o.frequency.exponentialRampToValueAtTime(45,t+.12);
+    g.gain.setValueAtTime(.16,t); g.gain.exponentialRampToValueAtTime(.001,t+.14);
+    o.connect(g); g.connect(MUS.master); o.start(t); o.stop(t+.15); }
+  if(s===2 || s===6) mNoise(t,.1,.05,1800);                                    // snare
+  if(s%2===1) mNoise(t,.04,.02,7000);                                          // hi-hat
+}
+function musicTick(){
+  if(!AC || !MUS.on) return;
+  while(MUS.next < AC.currentTime + .25){ mStep(MUS.step % 64, MUS.next); MUS.next += MUS.d; MUS.step++; }
+}
+function musicStart(){
+  if(muted || MUS.on) return;
+  try{
+    AC = AC || new (window.AudioContext||window.webkitAudioContext)();
+    if(AC.state === 'suspended') AC.resume();
+    MUS.master = AC.createGain(); MUS.master.gain.value = 1; MUS.master.connect(AC.destination);
+    MUS.on = true; MUS.step = 0; MUS.d = .2; MUS.next = AC.currentTime + .1;
+    MUS.timer = setInterval(musicTick, 50);
+  }catch(e){ MUS.on = false; }
+}
+function musicStop(){
+  if(MUS.timer) clearInterval(MUS.timer);
+  MUS.timer = null; MUS.on = false;
+  if(MUS.master){ const m = MUS.master; MUS.master = null;
+    try{ m.gain.setTargetAtTime(0, AC.currentTime, .05); }catch(e){}
+    setTimeout(()=>{ try{ m.disconnect(); }catch(e){} }, 400); }
+}
+document.addEventListener('visibilitychange', ()=>{ if(AC){ document.hidden ? AC.suspend() : AC.resume(); } });
+
+/* ---------- ZONA / TEMA LEVEL ---------- */
+const THEMES = [
+ {n:'Taman Siang',     sky:[0x4aa8ff,0xd6eeff], far:[0x7ad08a,0x5fbf78], t:[0x8a5a2b,0x4cc46a,0x3aa356,0x6e4520], b:[0xd8743a,0x8c3f1b]},
+ {n:'Papan Sirkuit',   sky:[0x0b3d2e,0x1f7a4d], far:[0x39d98a,0x1f9d68], t:[0x14532d,0xd4af37,0xb8962e,0x0e3a20], b:[0x1f7a4d,0xd4af37]},
+ {n:'Laboratorium',    sky:[0x2b2d5a,0x6b6fb5], far:[0x4a4e8f,0x3b3f73], t:[0x3b3f73,0x9aa0ff,0x7479d6,0x2e3260], b:[0x5a5fa8,0x2e3260]},
+ {n:'Gardu Listrik Malam', sky:[0x050816,0x1a2250], far:[0x0b1130,0x0b1130], t:[0x1c2438,0xffd23f,0xd9ae1f,0x141a29], b:[0x2b3550,0xffd23f]}];
+
+function startGame(){
+  musicStop();
+  $('#res').hidden = true;
+  if(game){ game.destroy(true); game = null; }
+  const TOTAL = 8, SEG = 1300, GY = 400, W = TOTAL*SEG + 260;
+  const order = [...Q].sort(()=>Math.random()-.5).slice(0,TOTAL);
+  const st = {lives:3, coins:0, score:0, ok:0, seg:0, t0:0, over:false, started:false};
+  let sc, P, cur, K, qText, hudL, hudR, intro, bugs, inv = 0, coyote = 0, held = false, skies = [], fars = [], clouds = [], hearts = [];
+  const segs = [];
+
+  const tex = (k,w,h,fn) => { if(sc.textures.exists(k)) return; const g = sc.make.graphics({x:0,y:0,add:false}); fn(g); g.generateTexture(k,w,h); g.destroy(); };
+  function makeTextures(){
+    tex('cloud',90,40,g=>{ g.fillStyle(0xffffff,.92); g.fillCircle(25,26,14); g.fillCircle(45,20,18); g.fillCircle(65,27,13); g.fillRect(25,26,40,14); });
+    THEMES.forEach((h,k)=>{
+      tex('sky'+k,800,450,g=>{ g.fillGradientStyle(h.sky[0],h.sky[0],h.sky[1],h.sky[1],1).fillRect(0,0,800,450);
+        if(k===3){ g.fillStyle(0xffffff,.9); for(let i=0;i<60;i++) g.fillRect((i*137)%800,(i*59)%260,2,2); } });
+      tex('far'+k,400,150,g=>{
+        g.fillStyle(h.far[0]);
+        if(k===0){ [0,200,400].forEach(x=>g.fillEllipse(x,150,300,150)); g.fillStyle(h.far[1]); [100,300].forEach(x=>g.fillEllipse(x,160,260,110)); }
+        else if(k===1){ g.lineStyle(3,h.far[0],.6);
+          [[0,40,120,40],[120,40,120,90],[120,90,260,90],[260,90,260,30],[260,30,400,30],[0,120,80,120],[80,120,80,70],[200,130,200,100],[200,100,330,100],[330,100,330,140]].forEach(l=>g.lineBetween(l[0],l[1],l[2],l[3]));
+          g.fillStyle(h.far[0],.8); [[120,40],[260,90],[260,30],[80,70],[330,100],[200,130]].forEach(p=>g.fillCircle(p[0],p[1],6));
+          g.fillStyle(h.far[1],.7).fillRect(300,60,50,36).fillRect(30,90,40,26); }
+        else if(k===2){ [[40,70,34],[150,90,26],[250,60,40],[340,95,28]].forEach(([x,y,w])=>{ g.fillStyle(h.far[0]).fillRect(x,y,w,150-y); g.fillStyle(h.far[1]).fillRect(x+4,y+10,w-8,6); });
+          g.fillStyle(h.far[0]).fillRect(0,128,400,22); }
+        else { [60,230,370].forEach(x=>{ g.fillStyle(h.far[0]).fillTriangle(x-26,150,x,40,x+26,150).fillRect(x-30,70,60,5); g.fillStyle(0xffd23f).fillCircle(x,40,3); }); }
+      });
+      tex('tile'+k,32,32,g=>{ g.fillStyle(h.t[0]).fillRect(0,0,32,32); g.fillStyle(h.t[1]).fillRect(0,0,32,9); g.fillStyle(h.t[2]).fillRect(0,9,32,2); g.fillStyle(h.t[3]).fillRect(6,18,4,4).fillRect(20,24,4,4); });
+      tex('dirt'+k,32,32,g=>{ g.fillStyle(h.t[0]).fillRect(0,0,32,32); g.fillStyle(h.t[3]).fillRect(10,8,4,4).fillRect(24,18,4,4); });
+      tex('brick'+k,32,24,g=>{ g.fillStyle(h.b[0]).fillRect(0,0,32,24); g.fillStyle(h.b[1]).fillRect(0,11,32,2).fillRect(0,0,32,2).fillRect(15,0,2,12).fillRect(7,12,2,12).fillRect(23,12,2,12); });
+    });
+    tex('qb',124,56,g=>{ g.fillStyle(0x14213d).fillRoundedRect(0,0,124,56,8); g.fillStyle(0xffb020).fillRoundedRect(3,3,118,50,6); g.fillStyle(0xffd57a).fillRect(8,6,108,4); g.fillStyle(0xb36b00).fillCircle(9,47,2.5).fillCircle(115,47,2.5); });
+    tex('coin',14,18,g=>{ g.fillStyle(0xffb020).fillEllipse(7,9,14,18); g.fillStyle(0xffe27a).fillEllipse(7,9,7,12); });
+    tex('heart',18,16,g=>{ g.fillStyle(0xffffff).fillCircle(5,5,5).fillCircle(13,5,5).fillTriangle(0,7,18,7,9,16); });
+    tex('hero',22,32,g=>{ g.fillStyle(0x14213d).fillRect(4,28,6,4).fillRect(12,28,6,4); g.fillStyle(0x2f5bff).fillRect(4,16,14,12);
+      g.fillStyle(0xf2c9a0).fillRect(4,6,14,10).fillRect(0,17,4,8).fillRect(18,17,4,8); g.fillStyle(0xffd23f).fillRect(2,2,18,6).fillRect(0,7,22,2); g.fillStyle(0x14213d).fillRect(8,10,2,3).fillRect(14,10,2,3); });
+    tex('bug',26,22,g=>{ g.fillStyle(0x14213d).fillRect(3,18,6,4).fillRect(17,18,6,4); g.fillStyle(0xd03038).fillEllipse(13,13,26,18);
+      g.fillStyle(0xffffff).fillCircle(8,11,4).fillCircle(18,11,4); g.fillStyle(0x14213d).fillCircle(9,12,2).fillCircle(17,12,2);
+      g.lineStyle(2,0x14213d).lineBetween(3,4,10,8).lineBetween(23,4,16,8); g.fillStyle(0xffd23f).fillTriangle(10,0,16,0,12,7); });
+  }
+
+  const solid = (cx,cy,w,h,key) => { const t = sc.add.tileSprite(cx,cy,w,h,key); sc.physics.add.existing(t,true); solids.push(t); return t; };
+  const solids = [];
+  const chunk = (a,b,k) => { solid((a+b)/2, GY+16, b-a, 32, 'tile'+k); sc.add.tileSprite((a+b)/2, GY+32+9, b-a, 18, 'dirt'+k); };
+  const coin = (x,y) => { const c = coins.create(x,y,'coin'); sc.tweens.add({targets:c, scaleX:.3, yoyo:true, repeat:-1, duration:420+(x%5)*40}); };
+  let coins;
+  const plat = (x,y,w,k) => { solid(x+w/2, y, w, 24, 'brick'+k); for(let k=0;k<3;k++) coin(x+w*(k+1)/4, y-34); };
+  const bug = (a,b) => { const e = bugs.create((a+b)/2, GY-12, 'bug'); e.setData('a',a).setData('b',b).setVelocityX(55); e.body.setSize(22,18); };
+
+  const setQ = (msg,col) => { const i = Math.min(st.seg,TOTAL-1); qText.setColor(col||'#ffffff').setText(msg || `Soal ${i+1}/${TOTAL}: ${order[i].q}`); };
+  const toast = txt => { const t = sc.add.text(400,150,txt,{fontSize:'30px',fontFamily:'system-ui,sans-serif',fontStyle:'bold',color:'#ffffff',stroke:'#14213d',strokeThickness:6}).setOrigin(.5).setScrollFactor(0).setDepth(25).setAlpha(0);
+    sc.tweens.add({targets:t, alpha:1, y:130, duration:350, yoyo:true, hold:1400, onComplete:()=>t.destroy()}); };
+  const burst = (x,y) => { for(let k=0;k<8;k++){ const c = sc.add.image(x,y,'coin'); sc.tweens.add({targets:c, x:x+Phaser.Math.Between(-70,70), y:y-Phaser.Math.Between(40,110), alpha:0, duration:700, onComplete:()=>c.destroy()}); } };
+
+  function finish(win){
+    if(st.over) return; st.over = true; musicStop(); sc.physics.pause(); sfx(win?'win':'bad');
+    sc.time.delayedCall(700,()=>{
+      const n = Math.round(st.ok/TOTAL*100), stars = n>=90?3:n>=70?2:n>=50?1:0, secs = Math.floor((sc.time.now-st.t0)/1000);
+      const el = $('#res'); el.hidden = false;
+      el.innerHTML = `<h2>${win?'Level selesai!':'Game over'}</h2><p style="font-size:2rem;margin:0;color:#ffb020">${'★'.repeat(stars)}${'☆'.repeat(3-stars)}</p>
+        <p>Nilai: <b>${n}</b> (${st.ok} dari ${TOTAL} benar)<br>Koin: ${st.coins} | Skor: ${st.score} | Waktu: ${secs} detik</p>
+        <div class="row"><button class="btn p" onclick="startGame()">Main lagi</button><a class="btn" href="#materi">Kembali ke materi</a></div>`;
+      el.scrollIntoView({behavior:'smooth',block:'nearest'});
+    });
+  }
+  function drawHud(){
+    hearts.forEach((h,k)=>h.setTint(k < st.lives ? 0xe5484d : 0x55657f));
+    hudL.setText('Nyawa ' + Math.max(st.lives,0) + '/3   Koin ' + st.coins);
+  }
+  function loseLife(){
+    st.lives--; sfx('hurt'); drawHud();
+    const cam = sc.cameras.main; cam.shake(180,.01); cam.flash(180,255,70,70);
+    const h = hearts[Math.max(st.lives,0)]; if(h) sc.tweens.add({targets:h, scale:1.9, yoyo:true, duration:160});
+    const t = sc.add.text(400,125,'−1 nyawa',{fontSize:'34px',fontFamily:'system-ui,sans-serif',fontStyle:'bold',color:'#ff6b70',stroke:'#14213d',strokeThickness:6}).setOrigin(.5).setScrollFactor(0).setDepth(30);
+    sc.tweens.add({targets:t, y:95, alpha:0, duration:1000, onComplete:()=>t.destroy()});
+    if(st.lives<=0) finish(false);
+  }
+  function hurt(){
+    if(inv > sc.time.now || st.over) return;
+    inv = sc.time.now + 1600; loseLife();
+    P.setVelocity(P.flipX?220:-220, -300);
+    sc.tweens.add({targets:P, alpha:.3, yoyo:true, repeat:7, duration:100, onComplete:()=>P.setAlpha(1)});
+  }
+  function answer(S,bl){
+    if(S.done || !P.body.touching.up) return; S.done = true;
+    sc.tweens.add({targets:[bl.img,bl.t], y:'-=8', yoyo:true, duration:90});
+    const good = S.blocks.find(x=>x.ok);
+    if(bl.ok){ st.ok++; st.score += 100; bl.img.setTint(0x6be38a); sfx('ok'); burst(bl.img.x, bl.img.y-30); setQ('Benar! +100', '#8ff0b0'); }
+    else { bl.img.setTint(0xff6b70); good.img.setTint(0x6be38a); loseLife(); setQ('Kurang tepat (−1 nyawa). Jawaban benar: '+good.t.text, '#ffb3b6'); }
+    sc.time.delayedCall(900,()=>{ if(st.over) return; S.col.destroy(); sc.tweens.add({targets:S.gate, alpha:0, duration:300, onComplete:()=>S.gate.destroy()}); });
+  }
+
+  game = new Phaser.Game({
+    type:Phaser.AUTO, parent:'gamebox', width:800, height:450, backgroundColor:'#4aa8ff',
+    physics:{default:'arcade', arcade:{gravity:{y:1000}}}, scale:{mode:Phaser.Scale.FIT}, render:{roundPixels:true},
+    scene:{
+      create(){
+        sc = this; makeTextures();
+        this.physics.world.setBounds(0,0,W,600); this.physics.world.setBoundsCollision(true,true,true,false);
+        this.cameras.main.setBounds(0,0,W,450);
+        THEMES.forEach((h,k)=>skies.push(this.add.image(400,225,'sky'+k).setScrollFactor(0).setAlpha(k?0:1)));
+        THEMES.forEach((h,k)=>fars.push(this.add.tileSprite(400,375,800,150,'far'+k).setScrollFactor(0).setAlpha(k?0:1)));
+        for(let k=0;k<10;k++) clouds.push(this.add.image(k*420+Phaser.Math.Between(0,250), Phaser.Math.Between(110,190), 'cloud').setScrollFactor(.25));
+        coins = this.physics.add.group({allowGravity:false, immovable:true});
+        bugs = this.physics.add.group();
+        P = this.physics.add.sprite(80,330,'hero'); P.body.setSize(16,30); P.setCollideWorldBounds(true).setMaxVelocity(230,700).setDragX(1100).setDepth(5);
+
+        for(let i=0;i<TOTAL;i++){
+          const x0 = i*SEG, gx = x0+470+(i*47)%110, gw = 130, last = i===TOTAL-1;
+          const k = Math.floor(i/2);
+          if(i===0) chunk(0,x0+SEG,k); else { chunk(x0,gx,k); chunk(gx+gw, x0+SEG+(last?260:0), k); }
+          plat(x0+300,318,96,k); plat(x0+800,305,96,k); if(i) plat(gx-5,300,96,k);
+          [0,1,2].forEach(k=>coin(x0+110+k*34,372));
+          bug(x0+240,x0+420); if(i) bug(gx+gw+40,gx+gw+230);
+          const S = {done:false, blocks:[]};
+          order[i].o.map((t,k)=>({t,ok:k===0})).sort(()=>Math.random()-.5).forEach((o,k)=>{
+            const x = x0+900+k*145, img = this.physics.add.staticImage(x,262,'qb'), t = this.add.text(x,262,o.t,{fontSize:'12px',fontFamily:'system-ui,sans-serif',fontStyle:'bold',color:'#14213d',align:'center',wordWrap:{width:104}}).setOrigin(.5);
+            S.blocks.push({img,t,ok:o.ok});
+          });
+          S.gate = this.add.rectangle(x0+SEG-16, GY-170, 16, 340, 0x2f5bff).setStrokeStyle(3,0xffffff); this.physics.add.existing(S.gate,true);
+          segs.push(S);
+        }
+        const pole = this.add.rectangle(W-110, GY-90, 8, 180, 0x55657f); this.add.circle(W-110, GY-196, 26, 0xffd23f).setStrokeStyle(4,0x14213d); this.add.circle(W-110, GY-196, 44, 0xffd23f, .25);
+        const fz = this.add.zone(W-110, GY-150, 60, 300); this.physics.add.existing(fz,true);
+
+        solids.forEach(s=>{ this.physics.add.collider(P,s); this.physics.add.collider(bugs,s); });
+        segs.forEach(S=>{ S.col = this.physics.add.collider(P,S.gate);
+          S.blocks.forEach(bl=>this.physics.add.collider(P,bl.img,()=>answer(S,bl))); });
+        this.physics.add.overlap(P,coins,(p,c)=>{ c.destroy(); st.coins++; st.score += 10; sfx('coin'); });
+        this.physics.add.overlap(P,bugs,(p,e)=>{
+          if(P.body.velocity.y>60 && P.y < e.y-10){ e.disableBody(true,false); this.tweens.add({targets:e, scaleY:.2, alpha:0, duration:200, onComplete:()=>e.destroy()}); P.setVelocityY(-340); st.score += 50; sfx('stomp'); }
+          else hurt(); });
+        this.physics.add.overlap(P,fz,()=>{ if(segs.every(s=>s.done)) finish(true); });
+
+        this.cameras.main.startFollow(P,true,.12,.12); this.cameras.main.setFollowOffset(-140,70);
+        cur = this.input.keyboard.createCursorKeys(); K = this.input.keyboard.addKeys('W,A,D,SPACE,M');
+        K.M.on('down',()=>muted=!muted);
+
+        const bar = this.add.rectangle(400,62,760,54,0x14213d,.9).setStrokeStyle(2,0xffffff,.6).setScrollFactor(0).setDepth(20);
+        qText = this.add.text(400,62,'',{fontSize:'17px',fontFamily:'system-ui,sans-serif',fontStyle:'bold',color:'#ffffff',align:'center',wordWrap:{width:730}}).setOrigin(.5).setScrollFactor(0).setDepth(21);
+        const hs = {fontSize:'15px',fontFamily:'system-ui,sans-serif',fontStyle:'bold',color:'#14213d',stroke:'#ffffff',strokeThickness:4};
+        for(let k=0;k<3;k++) hearts.push(this.add.image(24+k*24,20,'heart').setScrollFactor(0).setDepth(22));
+        hudL = this.add.text(100,8,'',hs).setScrollFactor(0).setDepth(21);
+        hudR = this.add.text(786,8,'',hs).setOrigin(1,0).setScrollFactor(0).setDepth(21).setInteractive().on('pointerdown',()=>muted=!muted);
+        setQ();
+
+        const dim = this.add.rectangle(400,225,800,450,0x14213d,.82).setScrollFactor(0);
+        const t1 = this.add.text(400,150,'ELEKTRO RUN',{fontSize:'58px',fontFamily:'system-ui,sans-serif',fontStyle:'bold',color:'#ffd23f',stroke:'#2f5bff',strokeThickness:8}).setOrigin(.5).setScrollFactor(0);
+        const t2 = this.add.text(400,235,'Kumpulkan koin, injak serangga korslet,\ntabrak blok jawaban yang benar dari bawah.',{fontSize:'20px',fontFamily:'system-ui,sans-serif',color:'#ffffff',align:'center'}).setOrigin(.5).setScrollFactor(0);
+        const t3 = this.add.text(400,300,'Panah / A D = jalan   Atas / Spasi = lompat   M = suara dan musik',{fontSize:'15px',fontFamily:'system-ui,sans-serif',color:'#c4cee3'}).setOrigin(.5).setScrollFactor(0);
+        const t4 = this.add.text(400,360,'Tekan tombol apa saja atau ketuk layar untuk mulai',{fontSize:'20px',fontFamily:'system-ui,sans-serif',fontStyle:'bold',color:'#ffffff'}).setOrigin(.5).setScrollFactor(0);
+        this.tweens.add({targets:t4, alpha:.3, yoyo:true, repeat:-1, duration:700});
+        [dim,t1,t2,t3,t4,bar,qText,hudL,hudR].forEach(o=>o.setDepth(o.depth||30));
+        [dim,t1,t2,t3,t4].forEach(o=>o.setDepth(40));
+        this.physics.pause();
+        const go = () => { if(st.started) return; st.started = true; st.t0 = this.time.now; [dim,t1,t2,t3,t4].forEach(o=>o.destroy()); this.physics.resume(); sfx('coin'); musicStart(); toast('Zona 1: '+THEMES[0].n); };
+        window.__go = go; this.input.once('pointerdown',go); this.input.keyboard.once('keydown',go);
+      },
+      update(time){
+        if(!st.started || st.over) return;
+        if(muted && MUS.on) musicStop(); else if(!muted && !MUS.on) musicStart();
+        MUS.d = st.lives <= 1 ? .165 : .2;      // musik makin cepat saat nyawa tinggal satu
+        const b = P.body, onG = b.blocked.down || b.touching.down;
+        if(onG) coyote = time;
+        const l = cur.left.isDown || K.A.isDown || T.l, r = cur.right.isDown || K.D.isDown || T.r, j = cur.up.isDown || K.SPACE.isDown || K.W.isDown || T.j;
+        P.setAccelerationX(l ? -1000 : r ? 1000 : 0);
+        if(l) P.setFlipX(true); if(r) P.setFlipX(false);
+        if(j && !held && time-coyote < 110){ P.setVelocityY(-540); held = true; coyote = -999; sfx('jump'); }
+        if(!j){ if(held && b.velocity.y < -200) P.setVelocityY(b.velocity.y*.5); held = false; }
+        P.setAngle(onG && (l||r) ? Math.sin(time/55)*7 : 0);
+        bugs.getChildren().forEach(e=>{ if(!e.active||!e.body) return;
+          if(e.x < e.getData('a')){ e.setVelocityX(55); e.setFlipX(false); } else if(e.x > e.getData('b')){ e.setVelocityX(-55); e.setFlipX(true); } });
+        if(P.y > 520){ loseLife(); if(!st.over){ P.setPosition(st.seg*SEG+60,300); P.setVelocity(0,0); inv = time+1200; } }
+        if(st.seg < TOTAL-1 && segs[st.seg].done && P.x > (st.seg+1)*SEG){ st.seg++; setQ(); if(st.seg%2===0) toast('Zona '+(st.seg/2+1)+': '+THEMES[st.seg/2].n); }
+        const cam = this.cameras.main, cx = cam.scrollX+400, ab = k => k>3 ? 0 : k<1 ? 1 : Phaser.Math.Clamp((cx-(k*2*SEG-300))/600,0,1);
+        THEMES.forEach((h,k)=>{ if(k) skies[k].setAlpha(ab(k)); fars[k].setAlpha(ab(k)*(1-ab(k+1))); fars[k].tilePositionX = cam.scrollX*.3; });
+        clouds.forEach(c=>c.setAlpha(.9*(1-ab(1))));
+        drawHud();
+        hudR.setText('Skor ' + st.score + '   ' + Math.floor((time-st.t0)/1000) + ' dtk   ' + (muted?'🔇':'🔊'));
+      }
+    }
+  });
+  [['bl','l'],['br','r'],['bj','j']].forEach(([id,k])=>{
+    const bt = $('#'+id); if(!bt || bt.dataset.b) return; bt.dataset.b = 1;
+    bt.addEventListener('pointerdown',e=>{ e.preventDefault(); T[k]=1; window.__go && window.__go(); });
+    ['pointerup','pointerleave','pointercancel'].forEach(ev=>bt.addEventListener(ev,()=>T[k]=0));
+  });
+}
+
+/* ---------- ROUTER ---------- */
+function render(){
+  if(game){ game.destroy(true); game=null; musicStop(); }
+  const h = location.hash.slice(1) || 'home';
+  app.innerHTML = pages[h] ? pages[h]() : MAT[h] ? matPage(h) : SIM[h] ? simPage(h) : pages.home();
+  window.scrollTo(0,0);
+  const grp = h==='eval'?'eval':(['home','about','direction'].includes(h)||!(pages[h]||MAT[h]||SIM[h]))?'home':'materi';
+  document.querySelectorAll('[data-k]').forEach(a=>a.classList.toggle('on',a.dataset.k===grp));
+  if(SIM[h] && !SIM[h].studio) initSim(h);
+  if(h==='eval') startGame();
+}
+addEventListener('hashchange', render);
+render();
+if ('serviceWorker' in navigator) {
+  addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
